@@ -1,8 +1,8 @@
 // tests/basic.test.js
 
-const { spawnSync } = require('child_process');
-const path = require('path');
+const { spawn } = require('child_process');
 const request = require('supertest');
+const path = require('path');
 
 // Access parameters in the config.ini file
 require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });
@@ -15,40 +15,43 @@ describe('Server Test', () => {
     let serverProcess;
 
     // Start the server before running tests
-    beforeAll(() => {
-        const result = spawnSync('node', ['server.js', `--port=${serverPort}`]);
+    beforeAll((done) => {
+        // Path to the server.js file
+        const serverPath = path.resolve(__dirname, '../server.js');
 
-        if (result.error) {
-            console.error('Error starting server:', result.error);
-            throw result.error; // Throw the error to fail the test suite
-        }
+        // Spawn the process
+        serverProcess = spawn('node', [serverPath]);
 
-        serverProcess = result.pid;  // pid is used to represent the child process
-        // Log the output of the child process
-        console.log('Child Process Output:', result.stdout.toString());
+        serverProcess.stdout.on('data', (data) => {
+            console.log(`Child Process Output: ${data}`);
+            // Check if the server has started successfully
+            if (data.includes('Now listening on port')) {
+                done();
+            }
+        });
+
+        serverProcess.stderr.on('data', (data) => {
+            console.error(`Child Process Error: ${data}`);
+        });
     });
 
     // Testing server functionality
     test('Server responds to GET request', async () => {
         const response = await request(`http://localhost:${serverPort}`).get('/');
 
-        // Expect a status code of either 302 or 200
-        expect([302, 200]).toContain(response.status);
+        // Use supertest's expect to assert the status directly
+        expect(response.status).toBeOneOf([302, 200]);
     });
 
     // Stop the server after running tests
-    afterAll(async () => {
+    afterAll((done) => {
         // Check if the serverProcess is defined before attempting to kill
         if (serverProcess) {
-            // Use process.kill to ensure the process is properly terminated
-            process.kill(serverProcess);
-        }
-    });
-
-    // Jest hook to handle open handles
-    afterEach(async () => {
-        if (serverProcess && !serverProcess.killed) {
+            // Use 'SIGTERM' signal to gracefully terminate the server
             serverProcess.kill('SIGTERM');
+            serverProcess.on('exit', () => {
+                done();
+            });
         }
     });
 });

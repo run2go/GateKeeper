@@ -8,28 +8,23 @@ const request = require('supertest');
 require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });
 const serverPort = process.env.SERVER_PORT;
 
-// Set a timeout of 10 seconds for the entire test suite
-jest.setTimeout(10000);
+// Set a timeout for the entire test suite (adjust as needed)
+jest.setTimeout(5000); // 5 seconds
 
 describe('Server Test', () => {
     let serverProcess;
 
     // Start the server before running tests
-    beforeAll(async (done) => {
-        serverProcess = await exec(`node server.js --port=${serverPort}`, (error, stdout, stderr) => {
-            // Log the output of the child process
-            console.log('Child Process Output:', stdout);
-            console.error('Child Process Error:', stderr);
+    beforeAll(async () => {
+        serverProcess = await exec(`node server.js --port=${serverPort}`);
+        // Log the output of the child process
+        console.log('Child Process Output:', serverProcess.stdout);
+        console.error('Child Process Error:', serverProcess.stderr);
 
-            // If there was an error, log it and proceed
-            if (error) {
-                console.error('Child Process Error:', error);
-            }
-
-            done(); // Continue with the test suite
-        });
-
-        setTimeout(() => done(), 2000); // Wait 2 seconds for the server to start
+        // If there was an error, log it
+        if (serverProcess.error) {
+            console.error('Child Process Error:', serverProcess.error);
+        }
     });
 
     // Testing server functionality

@@ -1,5 +1,5 @@
 # GateKeeper
-## _REST-API Bun Application_
+## _REST-API Bun/Node.js Application_
 #### Access your database via a Restful API without exposing it to the internet.
 
 This repository is developed to run in a docker container, but feel free to use the JS application right away.

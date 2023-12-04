@@ -40,7 +40,7 @@ describe('Server Test', () => {
         const response = await request(`http://localhost:${serverPort}`).get('/');
 
         // Use supertest's expect to assert the status directly
-        expect(response.status).toBeOneOf([302, 200]);
+        expect([302, 200]).toContain(response.status);
     });
 
     // Stop the server after running tests

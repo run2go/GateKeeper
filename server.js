@@ -1,10 +1,13 @@
 // server.js
-
-const serverName = "GateKeeper"
-const redirectURL = "https://github.com";
+const config = require('dotenv').config({ path: 'config.ini' });
+const serverName = process.env.SERVER_NAME;
+const serverPort = process.env.SERVER_PORT;
+const serverURL = process.env.SERVER_URL;
+const redirectURL = process.env.REDIRECT_URL;
 
 const express = require('express');
 const app = express();
+
 app.get('*', (reg, res) => {
     res.redirect(redirectURL);
   });

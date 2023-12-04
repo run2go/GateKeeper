@@ -9,6 +9,9 @@
     },
     "author": "run2go",
     "license": "ISC",
+    "devDependencies": {
+        "jest": "29.7.0"
+    },
     "dependencies": {
       "bcrypt": "^5.1.1",
       "dotenv": "^16.3.1",

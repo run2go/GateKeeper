@@ -12,12 +12,8 @@ app.get('*', (reg, res) => {
 console.log(`${serverName} started`);
 
 // Handle shutdown signals
-process.on('SIGTERM', () => {
-    Shutdown();
-  });
-process.on('SIGINT', () => {
-    Shutdown();
-});
+process.on('SIGTERM', Shutdown);
+process.on('SIGINT', Shutdown);
   
 function Shutdown() {
     console.log(`${serverName} stopped`);

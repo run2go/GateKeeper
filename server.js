@@ -18,14 +18,14 @@ const app = express();
 console.log(`${serverName} started`);
 
 // Bind the server to the specified port
-app.listen(serverPort, () => {
+const server = app.listen(serverPort, () => {
     console.log(`Now listening on port ${serverPort}`);
 });
 
 // Basic functionality to forward all requests to the specified redirect URL
 app.get('*', (reg, res) => {
     res.redirect(redirectURL);
-    console.log(`Server has been accessed with: ${reg.params}`);
+    console.log(`Server has been accessed with these params: ${JSON.stringify(req.params)}`);
 });
 
 // Handle shutdown signals
@@ -34,10 +34,11 @@ process.on('SIGINT', shutdown);
 
 // Graceful shutdown function, forces shutdown if exit process fails
 function shutdown() {
-    console.log(`${serverName} stopped`);
-
     // Exit the process
-    process.exit(0);
+    server.close(() => {
+        console.log(`${serverName} stopped`);
+        process.exit(0);
+    });
 
     // Force shutdown if server hasn't stopped in time
     setTimeout(() => {

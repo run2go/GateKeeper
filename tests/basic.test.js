@@ -8,7 +8,7 @@ const request = require('supertest');
 require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });
 const serverPort = process.env.SERVER_PORT;
 
-// Set a timeout for the entire test suite (adjust as needed)
+// Set a timeout for the entire test suite
 jest.setTimeout(5000); // 5 seconds
 
 describe('Server Test', () => {
@@ -38,5 +38,12 @@ describe('Server Test', () => {
     // Stop the server after running tests
     afterAll(() => {
         serverProcess.kill('SIGTERM');
+    });
+
+    // Jest hook to handle open handles
+    afterEach(() => {
+        if (serverProcess && !serverProcess.killed) {
+            serverProcess.kill('SIGTERM');
+        }
     });
 });

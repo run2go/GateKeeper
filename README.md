@@ -35,7 +35,7 @@ docker build -t GateKeeper .
 
 Start command:
 ```sh
-docker run -d -it --name GateKeeper -p 80:80 GateKeeper
+docker run -d -it --name GateKeeper -p 80:8080 GateKeeper
 ```
 
 Container commands:

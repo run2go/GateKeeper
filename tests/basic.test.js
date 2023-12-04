@@ -37,7 +37,7 @@ describe('Server Test', () => {
     });
 
     // Stop the server after running tests
-    afterAll(() => {
+    afterAll(async () => {
         // Check if the serverProcess is defined before attempting to kill
         if (serverProcess) {
             // Use process.kill to ensure the process is properly terminated
@@ -46,7 +46,7 @@ describe('Server Test', () => {
     });
 
     // Jest hook to handle open handles
-    afterEach(() => {
+    afterEach(async () => {
         if (serverProcess && !serverProcess.killed) {
             serverProcess.kill('SIGTERM');
         }

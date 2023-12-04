@@ -13,13 +13,13 @@ console.log(`${serverName} started`);
 
 // Handle shutdown signals
 process.on('SIGTERM', () => {
-    gracefulShutdown();
+    Shutdown();
   });
 process.on('SIGINT', () => {
-    gracefulShutdown();
+    Shutdown();
 });
   
-function gracefulShutdown() {
+function Shutdown() {
     console.log(`${serverName} stopped`);
 
     // Exit the process
@@ -29,5 +29,5 @@ function gracefulShutdown() {
     setTimeout(() => {
         console.error(`${serverName} terminated`);
         process.exit(22);
-    }, 5000); // 5 seconds
+    }, 2000); // 2 seconds
 }

@@ -1,6 +1,6 @@
 // tests/basic.test.js
 
-const { exec } = require('child_process');
+const { spawnSync } = require('child_process');
 const path = require('path');
 const request = require('supertest');
 
@@ -16,11 +16,16 @@ describe('Server Test', () => {
 
     // Start the server before running tests
     beforeAll(() => {
-        // Using execSync instead of exec and remove await
-        serverProcess = execSync(`node server.js --port=${serverPort}`);
-        
+        const result = spawnSync('node', ['server.js', `--port=${serverPort}`]);
+
+        if (result.error) {
+            console.error('Error starting server:', result.error);
+            throw result.error; // Throw the error to fail the test suite
+        }
+
+        serverProcess = result.pid;  // pid is used to represent the child process
         // Log the output of the child process
-        console.log('Child Process Output:', serverProcess.toString());
+        console.log('Child Process Output:', result.stdout.toString());
     });
 
     // Testing server functionality
@@ -33,7 +38,11 @@ describe('Server Test', () => {
 
     // Stop the server after running tests
     afterAll(() => {
-        serverProcess.kill('SIGTERM');
+        // Check if the serverProcess is defined before attempting to kill
+        if (serverProcess) {
+            // Use process.kill to ensure the process is properly terminated
+            process.kill(serverProcess);
+        }
     });
 
     // Jest hook to handle open handles

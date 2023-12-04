@@ -40,9 +40,9 @@ docker run -d -it --name GateKeeper -p 80:80 GateKeeper
 
 Container commands:
 ```sh
-docker exec GateKeeper start
-docker exec GateKeeper stop
-docker exec GateKeeper restart
+docker exec -it GateKeeper start
+docker exec -it GateKeeper stop
+docker exec -it GateKeeper restart
 ```
 
 

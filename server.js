@@ -14,11 +14,19 @@ const console = require('./utility');
 const express = require('express');
 const app = express();
 
-app.get('*', (reg, res) => {
-    res.redirect(redirectURL);
+// Notify that the server has been started
+console.log(`${serverName} started`);
+
+// Bind the server to the specified port
+app.listen(serverPort, () => {
+    console.log(`Now listening on port ${serverPort}`);
 });
 
-console.log(`${serverName} started`);
+// Basic functionality to forward all requests to the specified redirect URL
+app.get('*', (reg, res) => {
+    res.redirect(redirectURL);
+    console.log(`Server has been accessed with: ${reg.params}`);
+});
 
 // Handle shutdown signals
 process.on('SIGTERM', shutdown);

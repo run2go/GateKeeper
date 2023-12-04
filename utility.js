@@ -24,30 +24,25 @@ const originalConsoleError = console.error;
 
 // Adjust the default log() function, add a timestamp & enable logging
 function log(...args) {
-  const logMessage = `[${formattedDate}] ${args[0]}`;
-  // Append the log message to the console
-  if (args.length == 1) {
-	originalConsoleLog(logMessage);
-	if (loggingEnabled) fs.appendFileSync(logFilePath, logMessage + '\n');
-  }
-  else {
-    originalConsoleLog(logMessage, args[1]);
-    if (loggingEnabled) fs.appendFileSync(logFilePath, logMessage + args[1] +'\n');
-  }
+    const logMessage = `[${formattedDate}] ${args.join(' ')}`;
+  
+    // Append the log message to the console
+    originalConsoleLog(logMessage);
+	
+    if (loggingEnabled == "true") {
+        fs.appendFileSync(logFilePath, logMessage + '\n');
+    }
 }
 
 // Adjust the default error() function, add a timestamp & enable logging
-function error(consoleOut) {
-  const errorMessage = `[${formattedDate}] ${consoleOut}`;
-  // Append the error message to the console
-    if (args.length == 1) {
-	originalConsoleError(errorMessage);
-	if (loggingEnabled) fs.appendFileSync(logFilePath, errorMessage + '\n');
-  }
-  else {
-    originalConsoleError(errorMessage, args[1]);
-    if (loggingEnabled) fs.appendFileSync(logFilePath, errorMessage + args[1] +'\n');
-  }
+function error(...args) {
+    const errorMessage = `[${formattedDate}] ${args.join(' ')}`;
+
+    // Append the error message to the console
+    originalConsoleError(errorMessage);
+	if (loggingEnabled == "true") {
+        fs.appendFileSync(logFilePath, errorMessage + '\n');
+    }
 }
 
 // Allow the use of "console.log()" and "console.error()"

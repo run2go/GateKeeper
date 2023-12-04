@@ -15,16 +15,12 @@ describe('Server Test', () => {
     let serverProcess;
 
     // Start the server before running tests
-    beforeAll(async () => {
-        serverProcess = await exec(`node server.js --port=${serverPort}`);
+    beforeAll(() => {
+        // Using execSync instead of exec and remove await
+        serverProcess = execSync(`node server.js --port=${serverPort}`);
+        
         // Log the output of the child process
-        console.log('Child Process Output:', serverProcess.stdout);
-        console.error('Child Process Error:', serverProcess.stderr);
-
-        // If there was an error, log it
-        if (serverProcess.error) {
-            console.error('Child Process Error:', serverProcess.error);
-        }
+        console.log('Child Process Output:', serverProcess.toString());
     });
 
     // Testing server functionality

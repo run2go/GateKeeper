@@ -32,7 +32,7 @@ function log(...args) {
   }
   else {
     originalConsoleLog(logMessage, args[1]);
-    if (loggingEnabled)  fs.appendFileSync(logFilePath, logMessage + args[1] +'\n');
+    if (loggingEnabled) fs.appendFileSync(logFilePath, logMessage + args[1] +'\n');
   }
 }
 
@@ -42,14 +42,15 @@ function error(consoleOut) {
   // Append the error message to the console
     if (args.length == 1) {
 	originalConsoleError(errorMessage);
-	if (loggingEnabled)  fs.appendFileSync(logFilePath, errorMessage + '\n');
+	if (loggingEnabled) fs.appendFileSync(logFilePath, errorMessage + '\n');
   }
   else {
     originalConsoleError(errorMessage, args[1]);
-    if (loggingEnabled)  fs.appendFileSync(logFilePath, errorMessage + args[1] +'\n');
+    if (loggingEnabled) fs.appendFileSync(logFilePath, errorMessage + args[1] +'\n');
   }
 }
 
+// Allow the use of "console.log()" and "console.error()"
 module.exports = {
   log,
   error,

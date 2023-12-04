@@ -1,23 +1,27 @@
 {
-    "name": "gatekeeper",
-    "version": "1.0.0",
-    "description": "",
-    "main": "server.js",
-    "scripts": { 
-      "start": "node server.js",
-      "test": "jest"
-    },
-    "author": "run2go",
-    "license": "ISC",
-    "devDependencies": {
-        "jest": "29.7.0"
-    },
-    "dependencies": {
-      "bcrypt": "^5.1.1",
-      "dotenv": "^16.3.1",
-      "express": "^4.18.2",
-      "mysql2": "^3.6.5",
-      "sequelize": "^6.35.1"
-    }
+  "name": "gatekeeper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/run2go/GateKeeper.git"
+  },
+  "author": "run2go",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/run2go/GateKeeper/issues"
+  },
+  "homepage": "https://github.com/run2go/GateKeeper#readme",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "mysql2": "^3.6.5",
+    "sequelize": "^6.35.1"
   }
-  
+}

@@ -1,19 +1,19 @@
 #!/bin/bash
 
-# Function to start the Node.js application
+# Function to start the application
 start() {
-  echo "Starting Node.js application..."
+  echo "Starting the server"
   bun server.js
 }
 
-# Function to stop the Node.js application
+# Function to stop the application
 stop() {
-  echo "Stopping Node.js application..."
-  # Send SIGTERM signal to the Node.js process
+  echo "Stopping the server"
+  # Send SIGTERM signal to the process
   pkill -f "bun server.js"
 }
 
-# Function to restart the Node.js application
+# Function to restart the application
 restart() {
   stop
   start

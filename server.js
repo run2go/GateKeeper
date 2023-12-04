@@ -21,11 +21,11 @@ app.get('*', (reg, res) => {
 console.log(`${serverName} started`);
 
 // Handle shutdown signals
-process.on('SIGTERM', Shutdown);
-process.on('SIGINT', Shutdown);
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 // Graceful shutdown function, forces shutdown if exit process fails
-function Shutdown() {
+function shutdown() {
     console.log(`${serverName} stopped`);
 
     // Exit the process

@@ -11,9 +11,6 @@ const apiEndpoint = process.env.API_ENDPOINT;
 // Use the timestamp methods inside the utility.js file
 const console = require('./utility');
 
-// Require the db.js file to access the sequelize functionality
-const db = require('./db');
-
 // Make use of the express.js framework for the core application
 const express = require('express');
 const app = express();
@@ -44,17 +41,7 @@ app.get(apiEndpoint, (reg, res) => {
 // Handle POST requests for the API endpoint
 app.post(apiEndpoint, async (req, res) => {
     const receivedData = req.body;
-    try {
-        // Implement logic to process the received data using sequelize functions
-        const result = await db.updateData(receivedData.username, receivedData.password);
-
-        // Respond with the result or any appropriate response
-        res.json({ success: true, data: result });
-    } catch (error) {
-        // Handle errors
-        console.error(`Error processing POST request: ${error.message}`);
-        res.status(500).json({ success: false, error: error.message });
-    }
+    // Handle POST requests - To Do
     console.log(`POST request handled with these params: ${JSON.stringify(req.params)}`);
 });
 

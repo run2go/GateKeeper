@@ -1,7 +1,7 @@
 // server.js
 
 // Access parameters in the config.ini file
-const config = require('dotenv').config({ path: 'config.ini' });
+require('dotenv').config({ path: 'config.ini' });
 const serverName = process.env.SERVER_NAME;
 const serverPort = process.env.SERVER_PORT;
 const serverURL = process.env.SERVER_URL;

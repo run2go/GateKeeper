@@ -1,7 +1,7 @@
 // utility.js
 
 // Access parameters in the config.ini file
-const config = require('dotenv').config({ path: 'config.ini' });
+require('dotenv').config({ path: 'config.ini' });
 const loggingEnabled = process.env.LOGGING_ENABLED;
 const logFilePath = process.env.LOGFILE_PATH;
 

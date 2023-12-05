@@ -23,7 +23,7 @@ describe('Server Test', () => {
         serverProcess = spawn('node', [serverPath]);
 
         serverProcess.stdout.on('data', (data) => {
-            console.log(`Child Process Output: ${data}`);
+            console.log(`Process Output: ${data}`);
             // Check if the server has started successfully
             if (data.includes('Now listening on port')) {
                 done();
@@ -31,7 +31,7 @@ describe('Server Test', () => {
         });
 
         serverProcess.stderr.on('data', (data) => {
-            console.error(`Child Process Error: ${data}`);
+            console.error(`Process Error: ${data}`);
         });
     });
 

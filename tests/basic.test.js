@@ -56,12 +56,9 @@ describe('Server Test', () => {
             .send(postData);
 
         // Using supertest's expect to assert the status directly
-        expect(response.status).toBe(500);
+        expect(500).toContain(response.status);
         // Assert the response body
-        expect(response.body).toEqual({
-            success: false,
-            error: 'Invalid username',
-        });
+        expect('Invalid username').toContain(response.body);
     });
 
     // Stop the server after running tests

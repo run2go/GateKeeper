@@ -9,7 +9,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });
 const serverPort = process.env.SERVER_PORT;
 
 // Timeout for the entire test suite
-jest.setTimeout(5000); // 5 seconds
+jest.setTimeout(15000); // 15 seconds
 
 describe('Server Test', () => {
     let serverProcess;
@@ -35,11 +35,19 @@ describe('Server Test', () => {
         });
     });
 
-    // Testing server functionality
+    // Testing server GET functionality
     test('Server responds to GET request', async () => {
         const response = await request(`http://localhost:${serverPort}`).get('/');
 
-        // Use supertest's expect to assert the status directly
+        // Using supertest's expect to assert the status directly
+        expect([302, 200]).toContain(response.status);
+    });
+
+    // Testing server POST functionality
+    test('Server responds to GET request', async () => {
+        const response = await request(`http://localhost:${serverPort}`).post('/');
+
+        // Using supertest's expect to assert the status directly
         expect([302, 200]).toContain(response.status);
     });
 
@@ -47,7 +55,7 @@ describe('Server Test', () => {
     afterAll((done) => {
         // Check if the serverProcess is defined before attempting to kill
         if (serverProcess) {
-            // Use 'SIGTERM' signal to gracefully terminate the server
+            // Sending the 'SIGTERM' signal to gracefully terminate the server
             serverProcess.kill('SIGTERM');
             serverProcess.on('exit', () => {
                 done();

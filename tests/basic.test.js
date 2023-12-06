@@ -45,7 +45,7 @@ describe('Server Test', () => {
     });
 
     // Testing server POST functionality
-    test('Server responds to POST request with invalid username', async () => {
+    test('Server responds to invalid POST request', async () => {
         const postData = {
             username: 'test_user',
             password: 'test_pw',
@@ -56,9 +56,12 @@ describe('Server Test', () => {
             .send(postData);
 
         // Using supertest's expect to assert the status directly
-        expect(500).toContain(response.status);
+        expect(response.status).toEqual(500);
         // Assert the response body
-        expect('Invalid username').toContain(response.body);
+        expect(response.body).toEqual({
+            success: false,
+            error: expect.stringContaining('Invalid username'),
+        });
     });
 
     // Stop the server after running tests

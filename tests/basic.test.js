@@ -7,6 +7,7 @@ const path = require('path');
 // Access parameters in the config.ini file
 require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });
 const serverPort = process.env.SERVER_PORT;
+const apiEndpoint = process.env.API_ENDPOINT;
 
 // Timeout for the entire test suite
 jest.setTimeout(15000); // 15 seconds
@@ -44,12 +45,24 @@ describe('Server Test', () => {
     });
 
     // Testing server POST functionality
-    /*test('Server responds to POST request', async () => {
-        const response = await request(`http://localhost:${serverPort}`).post('/');
+    test('Server responds to POST request with invalid username', async () => {
+        const postData = {
+            username: 'test_user',
+            password: 'test_pw',
+        };
+
+        const response = await request(`http://localhost:${serverPort}`)
+            .post(apiEndpoint)
+            .send(postData);
 
         // Using supertest's expect to assert the status directly
-        expect([302, 200]).toContain(response.status);
-    });*/
+        expect(response.status).toBe(500);
+        // Assert the response body
+        expect(response.body).toEqual({
+            success: false,
+            error: 'Invalid username',
+        });
+    });
 
     // Stop the server after running tests
     afterAll((done) => {

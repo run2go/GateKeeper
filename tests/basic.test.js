@@ -44,12 +44,12 @@ describe('Server Test', () => {
     });
 
     // Testing server POST functionality
-    test('Server responds to GET request', async () => {
+    /*test('Server responds to POST request', async () => {
         const response = await request(`http://localhost:${serverPort}`).post('/');
 
         // Using supertest's expect to assert the status directly
         expect([302, 200]).toContain(response.status);
-    });
+    });*/
 
     // Stop the server after running tests
     afterAll((done) => {

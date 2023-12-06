@@ -26,23 +26,77 @@ const server = app.listen(serverPort, () => {
     console.log(`Now listening on port ${serverPort}`);
 });
 
-// Basic functionality to forward all requests to the specified redirect URL
-app.get("*", (reg, res) => {
-    res.redirect(serverURL);
-    console.log(`Server has been accessed with these params: ${JSON.stringify(req.params)}`);
+// Basic functionality to forward requests on the root directory
+app.get("/", (req, res) => {
+    res.redirect(redirectURL);
+    console.log(`Server has been accessed with these parameters: ${JSON.stringify(req.params)}`);
 });
 
 // Handle GET requests for the API endpoint
-app.get(apiEndpoint, (reg, res) => {
-    res.redirect(redirectURL);
-    console.log(`API has been accessed with these params: ${JSON.stringify(req.params)}`);
+app.get(apiEndpoint, (req, res) => {
+    res.redirect((apiEndpoint !== "*" && apiEndpoint !== "/") ? serverURL : redirectURL); // Prevent redirect looping
+    console.log(`API has been accessed with these parameters: ${JSON.stringify(req.params)}`);
 });
 
 // Handle POST requests for the API endpoint
 app.post(apiEndpoint, async (req, res) => {
     const receivedData = req.body;
-    // Handle POST requests - To Do
-    console.log(`POST request handled with these params: ${JSON.stringify(req.params)}`);
+
+    try {
+		// Require the db.js file to access the sequelize functionality
+		const db = require('./db');
+		
+        // Fetch the latest list of valid usernames from the database
+        const userList = await db.getUserList();
+
+        // Check if the provided username is in the list of valid usernames
+        if (!userList.includes(receivedData.username)) {
+            throw new Error('Invalid username');
+        }
+
+        let result;
+		switch (true) {
+            // Create
+            case Boolean(receivedData.create):
+                result = await db.updateData(
+                    receivedData.username,
+                    receivedData.password,
+                    receivedData.create.username,
+                    receivedData.create.password
+                );
+                break;
+
+            // Read
+            case Boolean(receivedData.read):
+                result = await db.getData(receivedData.read.username);
+                break;
+
+            // Update
+            case Boolean(receivedData.update):
+                result = await db.updateData(
+                    receivedData.username,
+                    receivedData.password,
+                    receivedData.update.password
+                );
+                break;
+
+            // Delete
+            case Boolean(receivedData.delete):
+                result = await db.removeData(receivedData.delete.username);
+                break;
+
+            default:
+                throw new Error('Invalid request format');
+        }
+        // Respond with the result or any appropriate response
+        res.json({ success: true, data: result });
+    } catch (error) {
+        // Handle errors
+        console.error(`Error processing POST request: ${error.message}`);
+        res.status(500).json({ success: false, error: error.message });
+    }
+
+    console.log(`POST request handled with these params: ${JSON.stringify(receivedData)}`);
 });
 
 // Handle shutdown signals

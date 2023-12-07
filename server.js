@@ -12,21 +12,22 @@ const helpURL = process.env.HELP_URL;
 // Use the timestamp methods inside the utility.js file
 const console = require('./utility');
 
+// Make use of the express.js framework for the core application
+const express = require('express');
+const app = express();
 
+// Declare server variable
+let server;
+
+// Middleware to parse JSON in request body
+app.use(express.json());
 
 async function startServer(){
-	// Make use of the express.js framework for the core application
-	const express = require('express');
-	const app = express();
-
-	// Middleware to parse JSON in request body
-	app.use(express.json());
-
 	// Notify that the server has been started
 	console.log(`${serverName} started`);
 
 	// Bind the server to the specified port
-	const server = app.listen(serverPort, () => {
+	server = app.listen(serverPort, () => {
 		console.log(`Now listening on port ${serverPort}`);
 	});
 

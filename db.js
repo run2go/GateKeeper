@@ -210,14 +210,46 @@ async function dataRemove(username) {
                 deletedAt: null,
             },
         });
-
-        // Soft delete by setting the "deletedAt" timestamp
+		
+		// Soft delete by setting the current date to the deletedAt data  field
         if (user) {
             user.deletedAt = new Date();
             await user.save();
         }
 
         return user;
+    } catch (error) {
+        throw new Error(`Error removing data for username ${username}: ${error.message}`);
+    }
+}
+
+// Function to remove user data by username (hard delete)
+async function dataDrop(username) {
+    try {
+        const user = await maintable.findOne({
+            where: {
+                username: username,
+            },
+        });
+
+        // Check if the user exists
+        if (!user) {
+            throw new Error(`User with username ${username} not found.`);
+        }
+
+        // Hard delete the user
+        const result = await maintable.destroy({
+            where: {
+                username: username,
+            },
+        });
+
+        if (result === 1) {
+            // Successfully deleted one user
+            return user;
+        } else {
+            throw new Error(`Failed to delete user with username ${username}.`);
+        }
     } catch (error) {
         throw new Error(`Error removing data for username ${username}: ${error.message}`);
     }
@@ -231,4 +263,5 @@ module.exports = {
     dataRead,
     dataUpdate,
     dataRemove,
+	dataDrop,
 };

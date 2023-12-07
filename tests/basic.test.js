@@ -20,6 +20,11 @@ describe('Server Test', () => {
         // Path to the server.js file
         const serverPath = path.resolve(__dirname, '../server.js');
 
+        // Use wait-on to wait for the server to be ready
+        await waitOn({
+            resources: [`http://localhost:${serverPort}`],
+        });
+
         // Spawn the process
         serverProcess = spawn('node', [serverPath]);
 
@@ -116,9 +121,7 @@ describe('Server Test', () => {
         if (serverProcess) {
             // Sending the 'SIGTERM' signal to gracefully terminate the server
             serverProcess.kill('SIGTERM');
-            serverProcess.on('exit', () => {
-                done();
-            });
+            await new Promise(resolve => serverProcess.on('exit', resolve));
         }
     });
 });

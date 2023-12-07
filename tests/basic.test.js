@@ -7,8 +7,7 @@ const path = require('path');
 
 // Access parameters in the config.ini file
 require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });
-//const serverPort = process.env.SERVER_PORT;
-const serverPort = 8080;
+const serverPort = process.env.SERVER_PORT;
 const apiEndpoint = process.env.API_ENDPOINT;
 
 describe('Server Test', () => {
@@ -35,7 +34,6 @@ describe('Server Test', () => {
 			console.error(`Process Error: ${data}`);
 		});
 	});
-
 
     // Testing server GET functionality
     test('GET request', async () => {

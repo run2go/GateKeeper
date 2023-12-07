@@ -3,6 +3,7 @@
 const { spawn } = require('child_process');
 const request = require('supertest');
 const path = require('path');
+const waitOn = require('wait-on'); 
 
 // Access parameters in the config.ini file
 require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });

@@ -10,10 +10,6 @@ require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });
 const serverPort = process.env.SERVER_PORT;
 const apiEndpoint = process.env.API_ENDPOINT;
 
-// Timeout for the entire test suite
-const timeoutTime = 60000; // 60 seconds
-jest.setTimeout(timeoutTime);
-
 describe('Server Test', () => {
     let serverProcess;
 
@@ -26,7 +22,6 @@ describe('Server Test', () => {
         await waitOn({
             resources: [`http://localhost:${serverPort}`],
             log: true,
-            timeout: timeoutTime,
         });
 
         // Spawn the process

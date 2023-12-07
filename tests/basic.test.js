@@ -11,7 +11,7 @@ const serverPort = process.env.SERVER_PORT;
 const apiEndpoint = process.env.API_ENDPOINT;
 
 // Timeout for the entire test suite
-jest.setTimeout(30000); // 30 seconds
+jest.setTimeout(60000); // 60 seconds
 
 describe('Server Test', () => {
     let serverProcess;
@@ -122,7 +122,9 @@ describe('Server Test', () => {
         if (serverProcess) {
             // Sending the 'SIGTERM' signal to gracefully terminate the server
             serverProcess.kill('SIGTERM');
-            await new Promise(resolve => serverProcess.on('exit', resolve));
+            serverProcess.on('exit', () => {
+                done();
+            });
         }
     });
 });

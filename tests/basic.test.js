@@ -144,6 +144,9 @@ describe('Server Test', () => {
     if (serverProcess) {
         // Sending the 'SIGTERM' signal to gracefully terminate the server
         await serverProcess.kill('SIGTERM');
+        await serverProcess.on('exit', () => {
+            done();
+        });
 		}
 	});
 });

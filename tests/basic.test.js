@@ -11,7 +11,8 @@ const serverPort = process.env.SERVER_PORT;
 const apiEndpoint = process.env.API_ENDPOINT;
 
 // Timeout for the entire test suite
-jest.setTimeout(60000); // 60 seconds
+const timeoutTime = 60000; // 60 seconds
+jest.setTimeout(timeoutTime);
 
 describe('Server Test', () => {
     let serverProcess;
@@ -24,6 +25,8 @@ describe('Server Test', () => {
         // Use wait-on to wait for the server to be ready
         await waitOn({
             resources: [`http://localhost:${serverPort}`],
+            log: true,
+            timeout: timeoutTime,
         });
 
         // Spawn the process

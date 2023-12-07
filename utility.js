@@ -9,7 +9,7 @@ const logFilePath = process.env.LOGFILE_PATH;
 const fs = require('fs');
 
 // Get the current date and format it into "year-month-day hour:minute:second"
-function getDate() {
+function getTimestamp() {
 	const currentDate = new Date();
 	const year = currentDate.getFullYear();
 	const month = String(currentDate.getMonth() + 1).padStart(2, '0'); // Adding 1 to month since it's zero-based (January = 0, December = 11)
@@ -26,7 +26,7 @@ const originalConsoleError = console.error;
 
 // Adjust the default log() function, add a timestamp & enable logging
 function log(...args) {
-	const formattedDate = getDate();
+	const formattedDate = getTimestamp();
     const logMessage = `[${formattedDate}] ${args[0]} ${args.slice(1).join(' ')}`;
 
     // Append the log message to the console
@@ -39,7 +39,7 @@ function log(...args) {
 
 // Adjust the default error() function, add a timestamp & enable logging
 function error(...args) {
-	const formattedDate = getDate();
+	const formattedDate = getTimestamp();
     const errorMessage = `[${formattedDate}] ${args[0]} ${args.slice(1).join(' ')}`;
 
     // Append the error message to the console
@@ -50,9 +50,9 @@ function error(...args) {
     }
 }
 
-
 // Allow the use of "console.log()" and "console.error()"
 module.exports = {
-  log,
-  error,
+	getTimestamp,
+	log,
+	error,
 };

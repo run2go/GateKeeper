@@ -21,7 +21,7 @@ Security measures along with CRUD database access.
 
 GateKeeper makes use of the following tools & software:
 
-- [Bun]/[Node.js] (JavaScript Runtime Environment)
+- [Bun] / [Node.js] (JavaScript Runtime Environment)
 - [Express.js] (Node Framework)
 - [Sequelize] (ORM, Object-Relational Mapping)
 

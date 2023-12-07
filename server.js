@@ -7,6 +7,7 @@ const serverPort = process.env.SERVER_PORT;
 const serverURL = process.env.SERVER_URL;
 const redirectURL = process.env.REDIRECT_URL;
 const apiEndpoint = process.env.API_ENDPOINT;
+const helpURL = process.env.HELP_URL;
 
 // Use the timestamp methods inside the utility.js file
 const console = require('./utility');
@@ -26,6 +27,13 @@ const server = app.listen(serverPort, () => {
     console.log(`Now listening on port ${serverPort}`);
 });
 
+// Require the db.js file to access the sequelize functionality
+const db = require('./db');
+
+// Fetch the latest list of valid usernames from the database
+let userList = await db.getUserList();
+console.log(`Fetched userlist: ${userList}`);
+
 // Basic functionality to forward requests on the root directory
 app.get("/", (req, res) => {
     res.redirect(redirectURL);
@@ -43,53 +51,59 @@ app.post(apiEndpoint, async (req, res) => {
     const receivedData = req.body;
 
     try {
-		// Require the db.js file to access the sequelize functionality
-		const db = require('./db');
-		
-        // Fetch the latest list of valid usernames from the database
-        const userList = await db.getUserList();
-
         // Check if the provided username is in the list of valid usernames
         if (!userList.includes(receivedData.username)) {
             throw new Error('Invalid username');
         }
+		
+		// Authenticate the given credentials if valid
+		const authCheck = await db.auth(receivedData.username, receivedData.password);
+		if (authCheck) {
+			let result;
+			switch (true) {
+				// Command
+				case Boolean(receivedData.cmd):
+					switch (receivedData.cmd) {
+							case "help": result = helpURL; break;
+							case "list": result = userList; break;
+							default: throw new Error('Invalid command');
+					}
+					break;
+					
+				// Create
+				case Boolean(receivedData.create):
+					result = await db.dataCreate(
+						receivedData.create.username,
+						receivedData.create.password
+					);
+					userList = await db.getUserList(); // Get the current userlist
+					break;
 
-        let result;
-		switch (true) {
-            // Create
-            case Boolean(receivedData.create):
-                result = await db.updateData(
-                    receivedData.username,
-                    receivedData.password,
-                    receivedData.create.username,
-                    receivedData.create.password
-                );
-                break;
+				// Read
+				case Boolean(receivedData.read):
+					result = await db.dataRead(receivedData.read.username);
+					break;
 
-            // Read
-            case Boolean(receivedData.read):
-                result = await db.getData(receivedData.read.username);
-                break;
+				// Update
+				case Boolean(receivedData.update):
+					result = await db.dataUpdate(
+						receivedData.update.username,
+						receivedData.update.password
+					);
+					break;
 
-            // Update
-            case Boolean(receivedData.update):
-                result = await db.updateData(
-                    receivedData.username,
-                    receivedData.password,
-                    receivedData.update.password
-                );
-                break;
+				// Delete
+				case Boolean(receivedData.delete):
+					result = await db.dataRemove(receivedData.delete.username);
+					userList = await db.getUserList(); // Get the current userlist
+					break;
 
-            // Delete
-            case Boolean(receivedData.delete):
-                result = await db.removeData(receivedData.delete.username);
-                break;
-
-            default:
-                throw new Error('Invalid request format');
-        }
-        // Respond with the result or any appropriate response
-        res.json({ success: true, data: result });
+				default:
+					throw new Error('Invalid request format');
+			}
+			// Respond with the result or any appropriate response
+			res.json({ success: true, data: result });
+		}
     } catch (error) {
         // Handle errors
         console.error(`Error processing POST request: ${error.message}`);

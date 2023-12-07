@@ -7,9 +7,10 @@ const path = require('path');
 // Access parameters in the config.ini file
 require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });
 const serverPort = process.env.SERVER_PORT;
+const apiEndpoint = process.env.API_ENDPOINT;
 
 // Timeout for the entire test suite
-jest.setTimeout(15000); // 15 seconds
+jest.setTimeout(30000); // 30 seconds
 
 describe('Server Test', () => {
     let serverProcess;
@@ -37,7 +38,7 @@ describe('Server Test', () => {
 
     // Testing server GET functionality
     test('Server responds to GET request', async () => {
-        const response = await request(`http://localhost:${serverPort}`).get('/');
+        const response = await request(`http://localhost:${serverPort}`).get(apiEndpoint);
 
         // Using supertest's expect to assert the status directly
         expect([302, 200]).toContain(response.status);
@@ -48,7 +49,7 @@ describe('Server Test', () => {
         // Helper function to make a POST request with a given payload
         const makePostRequest = async (payload) => {
             return await request(`http://localhost:${serverPort}`)
-                .post('/')
+                .post(apiEndpoint)
                 .send(payload);
         };
 

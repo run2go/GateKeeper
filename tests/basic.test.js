@@ -122,7 +122,9 @@ describe('Server Test', () => {
         if (serverProcess) {
             // Sending the 'SIGTERM' signal to gracefully terminate the server
             serverProcess.kill('SIGTERM');
-            await new Promise(resolve => serverProcess.on('exit', resolve));
+            serverProcess.on('exit', () => {
+                done();
+            });
         }
     });
 });

@@ -117,9 +117,6 @@ async function startServer(){
 	});
 }
 
-// Start the async server function
-startServer();
-
 // Handle shutdown signals
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
@@ -138,3 +135,6 @@ function shutdown() {
         process.exit(22);
     }, 2000); // 2 seconds
 }
+
+// Start the async server function
+startServer();

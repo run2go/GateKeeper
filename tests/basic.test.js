@@ -15,7 +15,7 @@ describe('Server Test', () => {
     let serverProcess;
 
     // Start the server before running tests
-    beforeAll(async (done) => {
+    beforeAll(async () => {
         // Path to the server.js file
         const serverPath = path.resolve(__dirname, '../server.js');
 
@@ -110,7 +110,7 @@ describe('Server Test', () => {
 	});
 
     // Stop the server after running tests
-    afterAll(async (done) => {
+    afterAll(async () => {
         // Check if the serverProcess is defined before attempting to kill
         if (serverProcess) {
             // Sending the 'SIGTERM' signal to gracefully terminate the server

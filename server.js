@@ -80,7 +80,7 @@ async function startServer(){
 							receivedData.create.username,
 							receivedData.create.password
 						);
-						userList = await db.getUserList(); // Get the current userlist
+						userList = await db.getUserList(); // Update the current userlist
 						break;
 
 					// Read
@@ -99,7 +99,13 @@ async function startServer(){
 					// Delete
 					case Boolean(receivedData.delete):
 						result = await db.dataRemove(receivedData.delete.username);
-						userList = await db.getUserList(); // Get the current userlist
+						userList = await db.getUserList(); // Update the current userlist
+						break;
+
+					// Drop
+					case Boolean(receivedData.drop):
+						result = await db.dataDrop(receivedData.drop.username);
+						userList = await db.getUserList(); // Update the current userlist
 						break;
 
 					default:

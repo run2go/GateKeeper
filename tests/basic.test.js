@@ -17,14 +17,6 @@ describe('Server Test', () => {
 	beforeAll(async () => {
 		const serverPath = path.resolve(__dirname, '../server.js');
 
-		// Use wait-on to wait for the server to be ready
-		/*await waitOn({
-			resources: [`http://localhost:${serverPort}`],
-			log: true,
-			timeout: 60000,
-			delay: 5000,
-		});*/
-
 		// Spawn the process
 		serverProcess = spawn('node', [serverPath]);
 
@@ -46,7 +38,7 @@ describe('Server Test', () => {
 
     // Testing server GET functionality
     test('GET request', async () => {
-        const response = await request(`http://localhost:${serverPort}`).get(apiEndpoint);
+        const response = await request(`http://127.0.0.1:${serverPort}`).get(apiEndpoint);
 
         // Using supertest's expect to assert the status directly
         expect([302, 200]).toContain(response.status);
@@ -54,7 +46,7 @@ describe('Server Test', () => {
 
 	// Helper function to make a POST request with a given payload
 	const makePostRequest = async (payload) => {
-		return await request(`http://localhost:${serverPort}`)
+		return await request(`http://127.0.0.1:${serverPort}`)
 			.post(apiEndpoint)
 			.send(payload);
 	};

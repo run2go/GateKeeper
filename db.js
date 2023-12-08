@@ -202,7 +202,7 @@ async function dataUpdate(username, password, isAdmin = false) {
 }
 
 // Function to remove user data by username (soft delete)
-async function dataRemove(username) {
+async function dataDelete(username) {
     try {
         const user = await maintable.findOne({
             where: {
@@ -211,7 +211,7 @@ async function dataRemove(username) {
             },
         });
 		
-		// Soft delete by setting the current date to the deletedAt data  field
+		// Soft delete by setting the current date to the deletedAt data field
         if (user) {
             user.deletedAt = new Date();
             await user.save();
@@ -220,6 +220,27 @@ async function dataRemove(username) {
         return user;
     } catch (error) {
         throw new Error(`Error removing data for username ${username}: ${error.message}`);
+    }
+}
+
+// Function to restore user data by username that has been (soft) deleted
+async function dataRestore(username) {
+    try {
+        const user = await maintable.findOne({
+            where: {
+                username: username,
+            },
+        });
+		
+		// Reset the deletedAt data field
+        if (user) {
+            user.deletedAt = null;
+            await user.save();
+        }
+
+        return user;
+    } catch (error) {
+        throw new Error(`Error restoring data for username ${username}: ${error.message}`);
     }
 }
 
@@ -262,6 +283,7 @@ module.exports = {
 	dataCreate,
     dataRead,
     dataUpdate,
-    dataRemove,
+    dataDelete,
+    dataRestore,
 	dataDrop,
 };

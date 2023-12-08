@@ -3,7 +3,6 @@
 const { spawn } = require('child_process');
 const request = require('supertest');
 const path = require('path');
-//const waitOn = require('wait-on'); 
 
 // Access parameters in the config.ini file
 require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });
@@ -35,8 +34,7 @@ describe('Server Test', () => {
 		});
 	});
 
-    // Testing server GET functionality
-    test('GET request', async () => {
+    test('Test case 1: Check GET functionality', async () => {
         const response = await request(`http://127.0.0.1:${serverPort}`).get(apiEndpoint);
 
         // Using supertest's expect to assert the status directly
@@ -50,103 +48,110 @@ describe('Server Test', () => {
 			.send(payload);
 	};
 	
-	// Test case 1: List command
-    test('POST requests: cmd', async () => {
+    test('Test case 2: List command', async () => {
         const listResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
             cmd: 'list',
         });
-        expect(listResponse.body.success).toBe(true);
+        expect(listResponse.body.success).toBeTruthy();
 		console.log('list command response:', listResponse.body);
 	});
 	
-	// Test case 2: Create user
-    test('POST requests: create user', async () => {
+    test('Test case 3: Create user', async () => {
         const createUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
             create: { username: 'test_user', password: 'test_pw' },
         });
-        expect(createUserResponse.body.success).toBe(true);
+        expect(createUserResponse.body.success).toBeTruthy();
 		console.log('create user response:', createUserResponse.body);
 	});
 
-	// Test case 3: Create admin user
-    test('POST requests: create admin', async () => {
+    test('Test case 4: Create admin user', async () => {
         const createAdminUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
             create: { username: 'temp_admin', password: 'test_pw', admin: true },
         });
-        expect(createAdminUserResponse.body.success).toBe(true);
+        expect(createAdminUserResponse.body.success).toBeTruthy();
 		console.log('create admin response:', createAdminUserResponse.body);
 	});
 
-	// Test case 4: Read user
-    test('POST requests: read', async () => {
+    test('Test case 5: Read user', async () => {
         const readUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
             read: { username: 'test_user' },
         });
-        expect(readUserResponse.body.success).toBe(true);
+        expect(readUserResponse.body.success).toBeTruthy();
 		console.log('read user response:', readUserResponse.body);
 	});
 
-	// Test case 5: Update user password
-    test('POST requests: update', async () => {
+    test('Test case 6: Update user password', async () => {
         const updateUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
             update: { username: 'test_user', password: 'new_password' },
         });
-        expect(updateUserResponse.body.success).toBe(true);
+        expect(updateUserResponse.body.success).toBeTruthy();
 		console.log('update user response:', updateUserResponse.body);
 	});
 
-	// Test case 6: Delete user
-    test('POST requests: delete user', async () => {
+    test('Test case 7: Delete user', async () => {
         const deleteUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
             delete: { username: 'test_user' },
         });
-        expect(deleteUserResponse.body.success).toBe(true);
+        expect(deleteUserResponse.body.success).toBeTruthy();
 		console.log('delete user response:', deleteUserResponse.body);
 	});
 
-	// Test case 7: Attempt to delete admin
-    test('POST requests: delete admin', async () => {
+    test('Test case 8: Attempt to delete admin', async () => {
 		const deleteAdminResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
             delete: { username: 'temp_admin' },
         });
-        expect(deleteAdminResponse.body.success).toBe(true);
+        expect(deleteAdminResponse.body.success).toBeTruthy();
 		console.log('delete admin response:', deleteAdminResponse.body);
 	});
 
-	// Test case 8: Drop a soft-deleted user
-    test('POST requests: drop deleted user', async () => {
+    test('Test case 9: Drop a soft-deleted user', async () => {
+		const dropUserResponse = await makePostRequest({
+            username: 'test_admin',
+            password: 'test_pass',
+            drop: { username: 'test_user' },
+        });
+        expect(dropUserResponse.body.success).toBeTruthy();
+		console.log('drop deleted user response:', dropUserResponse.body);
+	});
+    
+
+    test('Test case 10: Drop a admin user', async () => {
 		const dropUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
             drop: { username: 'temp_admin' },
         });
-        expect(dropUserResponse.body.success).toBe(true);
-		console.log('drop deleted user response:', dropUserResponse.body);
+        expect(dropUserResponse.body.success).toBeTruthy();
+		console.log('drop admin user response:', dropUserResponse.body);
 	});
-
+    
     // Stop the server after running tests
     afterAll(async () => {
     // Check if the serverProcess is defined before attempting to kill
     if (serverProcess) {
         // Sending the 'SIGTERM' signal to gracefully terminate the server
         await serverProcess.kill('SIGTERM');
-        await serverProcess.on('exit', () => {
-            done();
+		await new Promise((resolve) => {
+            serverProcess.on('exit', () => {
+                resolve();
+            });
         });
 		}
 	});
 });
+
+

@@ -98,10 +98,17 @@ async function startServer(){
 
 					// Delete
 					case Boolean(receivedData.delete):
-						result = await db.dataRemove(receivedData.delete.username);
+						result = await db.dataDelete(receivedData.delete.username);
 						userList = await db.getUserList(); // Update the current userlist
 						break;
 
+
+					// Restore
+					case Boolean(receivedData.restore):
+						result = await db.dataRestore(receivedData.restore.username);
+						userList = await db.getUserList(); // Update the current userlist
+						break;
+	
 					// Drop
 					case Boolean(receivedData.drop):
 						result = await db.dataDrop(receivedData.drop.username);

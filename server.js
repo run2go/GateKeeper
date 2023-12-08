@@ -68,9 +68,9 @@ async function startServer(){
 					// Command
 					case Boolean(receivedData.cmd):
 						switch (receivedData.cmd) {
-								case "help": result = helpURL; break;
-								case "list": result = userList; break;
-								default: throw new Error('Invalid command');
+                            case "help": result = helpURL; break;
+                            case "list": result = userList; break;
+                            default: throw new Error('Invalid command');
 						}
 						break;
 						

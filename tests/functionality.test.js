@@ -1,4 +1,4 @@
-// tests/basic.test.js
+// tests/functionality.test.js
 
 const { spawn } = require('child_process');
 const request = require('supertest');
@@ -9,10 +9,10 @@ require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });
 const serverPort = process.env.SERVER_PORT;
 const apiEndpoint = process.env.API_ENDPOINT;
 
-describe('Server Test', () => {
+describe('Server Test - GET', () => {
     let serverProcess;
 
-    // Start the server before running tests
+	// Start the server for GET test
 	beforeAll(async () => {
 		const serverPath = path.resolve(__dirname, '../server.js');
 
@@ -24,7 +24,7 @@ describe('Server Test', () => {
 			serverProcess.stdout.on('data', (data) => {
 				console.log(`Process Output: ${data}`);
 				if (data.includes('Now listening on port')) {
-					resolve();
+					setTimeout(resolve, 500); // Wait 0.5s to ensure proper startup
 				}
 			});
 		});
@@ -34,12 +34,56 @@ describe('Server Test', () => {
 		});
 	});
 
-    test('Test case 1: Check GET functionality', async () => {
-        const response = await request(`http://127.0.0.1:${serverPort}`).get(apiEndpoint);
+    test('Test case 1: Check basic GET response', async () => {
+        const response = await request(`http://127.0.0.1:${serverPort}`).get(`/`);
 
         // Using supertest's expect to assert the status directly
         expect([302, 200]).toContain(response.status);
     });
+	
+    test('Test case 2: Check API redirect functionality', async () => {
+        const response = await request(`http://127.0.0.1:${serverPort}`).get(apiEndpoint);
+
+        // Using supertest's expect to assert the status directly
+        expect([302]).toContain(response.status);
+    });
+
+    afterAll(async () => {
+        // Stop the server for GET testing
+        serverProcess.kill('SIGTERM');
+        await new Promise((resolve) => {
+            serverProcess.on('exit', () => {
+                console.log('Server process for GET testing exited.');
+                resolve();
+            });
+        });
+    });
+});
+
+describe('Server Test - POST', () => {
+    let serverProcess;
+
+    // Start the server for POST test
+	beforeAll(async () => {
+		const serverPath = path.resolve(__dirname, '../server.js');
+
+		// Spawn the process
+		serverProcess = spawn('node', [serverPath]);
+
+		// Use a promise to wait for the server to start
+		await new Promise((resolve) => {
+			serverProcess.stdout.on('data', (data) => {
+				console.log(`Process Output: ${data}`);
+				if (data.includes('Now listening on port')) {
+					setTimeout(resolve, 500); // Wait 0.5s to ensure proper startup
+				}
+			});
+		});
+
+		serverProcess.stderr.on('data', (data) => {
+			console.error(`Process Error: ${data}`);
+		});
+	});
 
 	// Helper function to make a POST request with a given payload
 	const makePostRequest = async (payload) => {
@@ -48,7 +92,7 @@ describe('Server Test', () => {
 			.send(payload);
 	};
 	
-    test('Test case 2: List command', async () => {
+    test('Test case 1: List command', async () => {
         const listResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
@@ -58,7 +102,7 @@ describe('Server Test', () => {
 		console.log('list command response:', listResponse.body);
 	});
 	
-    test('Test case 3: Create user', async () => {
+    test('Test case 2: Create user', async () => {
         const createUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
@@ -68,7 +112,7 @@ describe('Server Test', () => {
 		console.log('create user response:', createUserResponse.body);
 	});
 
-    test('Test case 4: Create admin user', async () => {
+    test('Test case 3: Create admin user', async () => {
         const createAdminUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
@@ -78,7 +122,7 @@ describe('Server Test', () => {
 		console.log('create admin response:', createAdminUserResponse.body);
 	});
 
-    test('Test case 5: Read user', async () => {
+    test('Test case 4: Read user', async () => {
         const readUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
@@ -88,7 +132,7 @@ describe('Server Test', () => {
 		console.log('read user response:', readUserResponse.body);
 	});
 
-    test('Test case 6: Update user password', async () => {
+    test('Test case 5: Update user password', async () => {
         const updateUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
@@ -98,7 +142,7 @@ describe('Server Test', () => {
 		console.log('update user response:', updateUserResponse.body);
 	});
 
-    test('Test case 7: Delete user', async () => {
+    test('Test case 6: Delete user', async () => {
         const deleteUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
@@ -108,7 +152,7 @@ describe('Server Test', () => {
 		console.log('delete user response:', deleteUserResponse.body);
 	});
 
-    test('Test case 8: Attempt to delete admin', async () => {
+    test('Test case 7: Attempt to delete admin', async () => {
 		const deleteAdminResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
@@ -118,7 +162,7 @@ describe('Server Test', () => {
 		console.log('delete admin response:', deleteAdminResponse.body);
 	});
 
-    test('Test case 9: Drop a soft-deleted user', async () => {
+    test('Test case 8: Drop a soft-deleted user', async () => {
 		const dropUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
@@ -129,7 +173,7 @@ describe('Server Test', () => {
 	});
     
 
-    test('Test case 10: Drop a admin user', async () => {
+    test('Test case 9: Drop a admin user', async () => {
 		const dropUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
@@ -138,20 +182,15 @@ describe('Server Test', () => {
         expect(dropUserResponse.body.success).toBeTruthy();
 		console.log('drop admin user response:', dropUserResponse.body);
 	});
-    
-    // Stop the server after running tests
+
     afterAll(async () => {
-    // Check if the serverProcess is defined before attempting to kill
-    if (serverProcess) {
-        // Sending the 'SIGTERM' signal to gracefully terminate the server
-        await serverProcess.kill('SIGTERM');
-		await new Promise((resolve) => {
+        // Stop the server for POST testing
+        serverProcess.kill('SIGTERM');
+        await new Promise((resolve) => {
             serverProcess.on('exit', () => {
+                console.log('Server process for POST testing exited.');
                 resolve();
             });
         });
-		}
-	});
+    });
 });
-
-

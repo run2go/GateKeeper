@@ -1,38 +1,49 @@
 // tests/functionality.test.js
 
-const { spawn } = require('child_process');
-const request = require('supertest');
-const path = require('path');
+const { spawn } = require('child_process'); // Required to spawn a test instance of the server
+const request = require('supertest'); // Used to send http requests to the spawned instance
+const path = require('path'); // Allow accessing files relative to the current directory
 
 // Access parameters in the config.ini file
 require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });
 const serverPort = process.env.SERVER_PORT;
 const apiEndpoint = process.env.API_ENDPOINT;
 
-describe('Server Test - GET', () => {
-    let serverProcess;
+let serverProcess;
 
-	// Start the server for GET test
-	beforeAll(async () => {
-		const serverPath = path.resolve(__dirname, '../server.js');
+async function startServer() {
+	const serverPath = path.resolve(__dirname, '../server.js');
 
-		// Spawn the process
-		serverProcess = spawn('node', [serverPath]);
+	// Spawn the process
+	serverProcess = spawn('node', [serverPath]);
 
-		// Use a promise to wait for the server to start
-		await new Promise((resolve) => {
-			serverProcess.stdout.on('data', (data) => {
-				console.log(`Process Output: ${data}`);
-				if (data.includes('Now listening on port')) {
-					setTimeout(resolve, 500); // Wait 0.5s to ensure proper startup
-				}
-			});
-		});
-
-		serverProcess.stderr.on('data', (data) => {
-			console.error(`Process Error: ${data}`);
+	// Use a promise to wait for the server to start
+	await new Promise((resolve) => {
+		serverProcess.stdout.on('data', (data) => {
+			console.log(`Process Output: ${data}`);
+			if (data.includes('Now listening on port')) {
+				setTimeout(resolve, 500); // Wait 0.5s to ensure proper startup
+			}
 		});
 	});
+
+	serverProcess.stderr.on('data', (data) => {
+		console.error(`Process Error: ${data}`);
+	});
+}
+
+async function stopServer() {
+	serverProcess.kill('SIGTERM');
+	await new Promise((resolve) => {
+		serverProcess.on('exit', () => {
+			resolve();
+		});
+	});
+}
+
+
+describe('Server Test - GET', () => {
+	beforeAll(async () => {  await startServer(); });
 
     test('Test case 1: Check basic GET response', async () => {
         const response = await request(`http://127.0.0.1:${serverPort}`).get(`/`);
@@ -48,42 +59,11 @@ describe('Server Test - GET', () => {
         expect([302]).toContain(response.status);
     });
 
-    afterAll(async () => {
-        // Stop the server for GET testing
-        serverProcess.kill('SIGTERM');
-        await new Promise((resolve) => {
-            serverProcess.on('exit', () => {
-                console.log('Server process for GET testing exited.');
-                resolve();
-            });
-        });
-    });
+    afterAll(async () => { await stopServer(); });
 });
 
 describe('Server Test - POST', () => {
-    let serverProcess;
-
-    // Start the server for POST test
-	beforeAll(async () => {
-		const serverPath = path.resolve(__dirname, '../server.js');
-
-		// Spawn the process
-		serverProcess = spawn('node', [serverPath]);
-
-		// Use a promise to wait for the server to start
-		await new Promise((resolve) => {
-			serverProcess.stdout.on('data', (data) => {
-				console.log(`Process Output: ${data}`);
-				if (data.includes('Now listening on port')) {
-					setTimeout(resolve, 500); // Wait 0.5s to ensure proper startup
-				}
-			});
-		});
-
-		serverProcess.stderr.on('data', (data) => {
-			console.error(`Process Error: ${data}`);
-		});
-	});
+	beforeAll(async () => {  await startServer(); });
 
 	// Helper function to make a POST request with a given payload
 	const makePostRequest = async (payload) => {
@@ -183,14 +163,5 @@ describe('Server Test - POST', () => {
 		console.log('drop admin user response:', dropUserResponse.body);
 	});
 
-    afterAll(async () => {
-        // Stop the server for POST testing
-        serverProcess.kill('SIGTERM');
-        await new Promise((resolve) => {
-            serverProcess.on('exit', () => {
-                console.log('Server process for POST testing exited.');
-                resolve();
-            });
-        });
-    });
+    afterAll(async () => { await stopServer(); });
 });

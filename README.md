@@ -14,7 +14,8 @@ Security measures along with CRUD database access.
 | Authentication | Make use of access tokens |
 | GET | Retrieve single table rows or full tables |
 | POST | Insert/Update a new table row or create a new table |
-| DELETE | (Soft) Delete specified table rows or drop a full table |
+| DELETE | (Soft) Delete specified table rows or disable a full table |
+| DROP | (Hard) Delete specified table rows or drop a full table |
 
 
 ## Tech

@@ -1,7 +1,6 @@
 // server.js
 
-// Access parameters in the config.ini file
-require('dotenv').config({ path: 'config.ini' });
+require('dotenv').config({ path: 'config.ini' }); // Access parameters in the config.ini file
 const serverName = process.env.SERVER_NAME;
 const serverPort = process.env.SERVER_PORT;
 const serverURL = process.env.SERVER_URL;
@@ -9,69 +8,48 @@ const redirectURL = process.env.REDIRECT_URL;
 const apiEndpoint = process.env.API_ENDPOINT;
 const helpURL = process.env.HELP_URL;
 
-// Use the timestamp methods inside the utility.js file
-const console = require('./utility');
+const console = require('./utility'); // Use the timestamp methods inside the utility.js file
 
-// Make use of the express.js framework for the core application
-const express = require('express');
+const express = require('express'); // Make use of the express.js framework for the core application
 const app = express();
+app.use(express.json()); // Middleware to parse JSON in request body
 
-// Declare server variable
-let server;
 
-// Middleware to parse JSON in request body
-app.use(express.json());
+let server; // Declare server variable
 
 async function startServer(){
-	// Notify that the server has been started
-	console.log(`${serverName} started`);
+	console.log(`${serverName} started`); // Notify that the server has been started
+	server = app.listen(serverPort, () => { console.log(`Now listening on port ${serverPort}`); }); // Bind the server to the specified port
 
-	// Bind the server to the specified port
-	server = app.listen(serverPort, () => {
-		console.log(`Now listening on port ${serverPort}`);
-	});
-
-	// Require the db.js file to access the sequelize functionality
-	const db = require('./db');
+	const db = require('./db'); // Require the db.js file to access the sequelize functionality
 	
-	// Fetch the list of valid usernames from the database
-	let userList = await db.getUserList();
+	let userList = await db.getUserList(); // Fetch the list of valid usernames from the database
 	console.log(`Fetched userlist: ${userList}`);
 
-	// Fetch the list of available tables from the database
-	let tableList = await db.getTableList();
+	let tableList = await db.getTableList(); // Fetch the list of available tables from the database
 	console.log(`Fetched tablelist: ${tableList}`);
 
-	// Basic functionality to forward requests on the root directory
-	app.get("/", (req, res) => {
+	app.get("/", (req, res) => { // Basic functionality to forward requests on the root directory
 		res.redirect(redirectURL);
 		console.log(`Server has been accessed with these parameters: ${JSON.stringify(req.params)}`);
 	});
 
-	// Handle GET requests for the API endpoint
-	app.get(apiEndpoint, (req, res) => {
+	app.get(apiEndpoint, (req, res) => { // Handle GET requests for the API endpoint
 		res.redirect((apiEndpoint !== "*" && apiEndpoint !== "/") ? serverURL : redirectURL); // Prevent redirect looping
 		console.log(`API has been accessed with these parameters: ${JSON.stringify(req.params)}`);
 	});
 
-	// Handle POST requests for the API endpoint
-	app.post(apiEndpoint, async (req, res) => {
+	app.post(apiEndpoint, async (req, res) => { // Handle POST requests for the API endpoint
 		const data = req.body;
-
 		try {
-			// Check if the provided username is in the list of valid usernames
-			if (!userList.includes(data.username)) {
-				throw new Error('Invalid username');
-			}
+			if (!userList.includes(data.username)) { throw new Error('Invalid username'); } // Check if the provided username is in the list of valid usernames
 			
-			// Authenticate the given credentials if valid
-			const authCheck = await db.authCheck(data.username, data.password);
+			const authCheck = await db.authCheck(data.username, data.password); // Authenticate the given credentials if valid
 			if (authCheck) {
-				const authCheckAdmin = await db.authCheckAdmin(data.username);
+				const authCheckAdmin = await db.authCheckAdmin(data.username); // Check if the authenticated user is an admin
 				let result;
 				switch (true) {
-					// Command
-					case Boolean(data.cmd) && authCheckAdmin:
+					case Boolean(data.cmd) && authCheckAdmin: // Command
 						switch (data.cmd) {
                             case "help": result = helpURL; break;
                             case "listusers": result = userList; break;
@@ -80,18 +58,15 @@ async function startServer(){
 						}
 						break;
 						
-				// Create
-				case Boolean(data.create):
+				case Boolean(data.create): // Create
 					if (data.create.tablename) {
 						if (data.create.columns && Array.isArray(data.create.columns)) {
-							// Create a new table with dynamic columns
-							result = await db.tableCreate(data.create.tablename, data.create.columns);
+							result = await db.tableCreate(data.create.tablename, data.create.columns); // Create a new table with dynamic columns
 							tableList = await db.getTableList();
-						} else {
-							// Handle the case where columns are not provided
-							throw new Error('Invalid column information');
 						}
-					} else if (authCheckAdmin) {
+						else { throw new Error('Invalid column information'); } // Handle the case where columns are not provided
+					}
+					else if (authCheckAdmin) {
 						result = await db.dataCreate(
 							data.create.username,
 							data.create.password
@@ -100,25 +75,20 @@ async function startServer(){
 					}
 					break;
 
-                // Read
-                case Boolean(data.read) && authCheckAdmin:
-                    if (data.read.tablename) {
-                        result = await db.tableRead(data.read.tablename, data.read.row);
-                    } else {
-                        result = await db.dataRead(data.read.username);
-                    }
+                case Boolean(data.read): // Read
+                    if (data.read.tablename) { result = await db.tableRead(data.read.tablename, data.read.row); }
+					else if (authCheckAdmin) { result = await db.dataRead(data.read.username); }
                     break;
 
-                // Update
-                case Boolean(data.update):
-                    if (data.update.tablename) {
-                        // Use the provided field as table name and use its JSON content as data to update the table
+                case Boolean(data.update): // Update
+                    if (data.update.tablename) { // Use the provided field as table name and use its JSON content as data to update the table
                         result = await db.tableUpdate(
                             data.update.tablename,
                             data.update.row,
                             data.update.newData
                         );
-                    } else if (authCheckAdmin) {
+                    }
+					else if (authCheckAdmin) {
                         result = await db.dataUpdate(
                             data.update.username,
                             data.update.password
@@ -126,16 +96,14 @@ async function startServer(){
                     }
                     break;
 
-                // Update own password
-                case Boolean(data.update):
+                case Boolean(data.update): // Update own password
                     result = await db.dataUpdate(
                         data.username,
                         data.update.password
                     );
                     break;
 
-                // Delete
-                case Boolean(data.delete):
+                case Boolean(data.delete): // Delete
                     if (data.delete.tablename) {
                         result = await db.tableDelete(data.delete.tablename, data.delete.row);
                         tableList = await db.getTableList();
@@ -144,19 +112,18 @@ async function startServer(){
                         userList = await db.getUserList();
                     }
                     break;
-                // Restore
-                case Boolean(data.restore) && authCheckAdmin:
+                
+                case Boolean(data.restore): // Restore
                     if (data.restore.tablename) {
                         result = await db.tableRestore(data.restore.tablename);
                         tableList = await db.getTableList();
-                    } else {
+                    } else if (authCheckAdmin) {
                         result = await db.dataRestore(data.restore.username);
                         userList = await db.getUserList();
                     }
                     break;
 
-                // Drop
-                case Boolean(data.drop) && authCheckAdmin:
+                case Boolean(data.drop) && authCheckAdmin: // Drop
                     if (data.drop.tablename) {
                         result = await db.tableDrop(data.drop.tablename);
                         tableList = await db.getTableList();
@@ -166,40 +133,32 @@ async function startServer(){
                     }
                     break;
 
-					default:
-						throw new Error('Invalid request format');
+					default: throw new Error('Invalid request format');
 				}
-				// Respond with the result or any appropriate response
-				res.json({ success: true, data: result });
+				res.json({ success: true, data: result }); // Respond with the result or any appropriate response
 			}
-		} catch (error) {
-			// Handle errors
-			console.error(`Error processing POST request: ${error.message}`);
+		}
+		catch (error) {
+			console.error(`Error processing POST request: ${error.message}`); // Handle errors
 			res.status(500).json({ success: false, error: error.message });
 		}
-
 		console.log(`POST request handled with these params: ${JSON.stringify(data)}`);
 	});
 }
 
-// Handle shutdown signals
-process.on('SIGTERM', shutdown);
+process.on('SIGTERM', shutdown); // Handle shutdown signals
 process.on('SIGINT', shutdown);
 
-// Graceful shutdown function, forces shutdown if exit process fails
-function shutdown() {
-    // Exit the process
-    server.close(() => {
+function shutdown() { // Graceful shutdown function, forces shutdown if exit process fails
+    server.close(() => { // Exit the process
         console.log(`${serverName} stopped`);
         process.exit(0);
     });
 
-    // Force shutdown if server hasn't stopped in time
-    setTimeout(() => {
+    setTimeout(() => { // Force shutdown if server hasn't stopped in time
         console.error(`${serverName} terminated`);
         process.exit(22);
     }, 2000); // 2 seconds
 }
 
-// Start the async server function
-startServer();
+startServer(); // Start the async server function

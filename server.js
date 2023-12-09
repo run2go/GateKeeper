@@ -5,8 +5,9 @@ const serverName = process.env.SERVER_NAME;
 const serverPort = process.env.SERVER_PORT;
 const serverURL = process.env.SERVER_URL;
 const redirectURL = process.env.REDIRECT_URL;
-const apiEndpoint = process.env.API_ENDPOINT;
 const helpURL = process.env.HELP_URL;
+const dbUsername = process.env.DB_USERNAME;
+const dbPassword = process.env.DB_PASSWORD;
 
 const console = require('./utility'); // Use the timestamp methods inside the utility.js file
 
@@ -14,136 +15,191 @@ const express = require('express'); // Make use of the express.js framework for 
 const app = express();
 app.use(express.json()); // Middleware to parse JSON in request body
 
-
 let server; // Declare server variable
 
 async function startServer(){
-	console.log(`${serverName} started`); // Notify that the server has been started
-	server = app.listen(serverPort, () => { console.log(`Now listening on port ${serverPort}`); }); // Bind the server to the specified port
+	try {
+		console.log(`${serverName} started`); // Notify that the server has been started
+		server = app.listen(serverPort, () => { console.log(`Now listening on port ${serverPort}`); }); // Bind the server to the specified port
 
-	const db = require('./db'); // Require the db.js file to access the sequelize functionality
-	
-	let userList = await db.getUserList(); // Fetch the list of valid usernames from the database
-	console.log(`Fetched userlist: ${userList}`);
+		const db = require('./db'); // Require the db.js file to access the sequelize functionality
+		let userData = await db.getUserData();
+		let	userList = userData.map((user) => user.username);
+		let	userListActive = userData.filter((user) => user.deleted === null).map((user) => user.username);
+		let	userListDeleted = userData.filter((user) => user.deleted !== null).map((user) => user.username);
+		let	userlistAdmin = userData.filter((user) => user.admin === true).map((user) => user.username);
+		async function listUpdate() { // Fetch the data of valid usernames from the database
+			userData = await db.getUserData();
+			userList = userData.map((user) => user.username);
+			userListActive = userData.filter((user) => user.deleted === null).map((user) => user.username);
+			userListDeleted = userData.filter((user) => user.deleted !== null).map((user) => user.username);
+			userlistAdmin = userData.filter((user) => user.admin === true).map((user) => user.username);
+		}
+		let tableList = await db.getTableData(); // Fetch the list of available tables from the database
+		if (userlistAdmin.length === 0) { await db.dataCreate(dbUsername, dbPassword, true); } // Add admin user if adminlist is empty
+		
+		function authCheck(user, pass) { return userData.find((u) => (u.username === user && u.password === pass)) ? true : false; }
+		function authCheckAdmin(user) { return userData.find((u) => (u.username === user && u.admin === true)) ? true : false; }
+		
+		console.log(`Fetched userlist: ${userListActive}`);
+		console.log(`Fetched adminlist: ${userlistAdmin}`);
+		console.log(`Fetched tablelist: ${tableList}`);
 
-	let tableList = await db.getTableList(); // Fetch the list of available tables from the database
-	console.log(`Fetched tablelist: ${tableList}`);
+		let result;
+		
+		app.get("/", (req, res) => { // Basic functionality to forward requests on the root directory to the specified redirectURL
+			res.redirect(redirectURL);
+			console.log(`Server Access via GET on root dir: ${JSON.stringify(req.params)}`);
+		});
+		
+		app.get("*", (req, res) => { // Receive all other requests and forward to the specified serverURL
+			res.redirect(serverURL);
+			console.log(`Server Accessed via GET: ${JSON.stringify(req.params)}`);
+		});
 
-	app.get("/", (req, res) => { // Basic functionality to forward requests on the root directory
-		res.redirect(redirectURL);
-		console.log(`Server has been accessed with these parameters: ${JSON.stringify(req.params)}`);
-	});
-
-	app.get(apiEndpoint, (req, res) => { // Handle GET requests for the API endpoint
-		res.redirect((apiEndpoint !== "*" && apiEndpoint !== "/") ? serverURL : redirectURL); // Prevent redirect looping
-		console.log(`API has been accessed with these parameters: ${JSON.stringify(req.params)}`);
-	});
-
-	app.post(apiEndpoint, async (req, res) => { // Handle POST requests for the API endpoint
-		const data = req.body;
-		try {
-			if (!userList.includes(data.username)) { throw new Error('Invalid username'); } // Check if the provided username is in the list of valid usernames
-			
-			const authCheck = await db.authCheck(data.username, data.password); // Authenticate the given credentials if valid
-			if (authCheck) {
-				const authCheckAdmin = await db.authCheckAdmin(data.username); // Check if the authenticated user is an admin
-				let result;
-				switch (true) {
-					case Boolean(data.cmd) && authCheckAdmin: // Command
-						switch (data.cmd) {
-                            case "help": result = helpURL; break;
-                            case "listusers": result = userList; break;
-                            case "listtables": result = tableList; break;
-                            default: throw new Error('Invalid command');
-						}
+		app.post("/cmd", async (req, res) => {
+			try {
+				if (!authCheck(req.body.username, req.body.password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				switch (req.body.content) {
+					case "help": result = helpURL; break;
+					case "users":
+					case "listusers":
+					case "userlist": result = userList; break;
+					case "listadmins":
+					case "adminlist":
+					case "admins": result = userlistAdmin; break;
+					case "tablelist":
+					case "listtables":
+					case "tables": result = tableList; break;
+					case "refresh":
+					case "update":
+						listUpdate();
+						result = `${serverName} refreshed`;
 						break;
-						
-				case Boolean(data.create): // Create
-					if (data.create.tablename) {
-						if (data.create.columns && Array.isArray(data.create.columns)) {
-							result = await db.tableCreate(data.create.tablename, data.create.columns); // Create a new table with dynamic columns
-							tableList = await db.getTableList();
-						}
-						else { throw new Error('Invalid column information'); } // Handle the case where columns are not provided
-					}
-					else if (authCheckAdmin) {
-						result = await db.dataCreate(
-							data.create.username,
-							data.create.password
-						);
-						userList = await db.getUserList();
-					}
-					break;
-
-                case Boolean(data.read): // Read
-                    if (data.read.tablename) { result = await db.tableRead(data.read.tablename, data.read.row); }
-					else if (authCheckAdmin) { result = await db.dataRead(data.read.username); }
-                    break;
-
-                case Boolean(data.update): // Update
-                    if (data.update.tablename) { // Use the provided field as table name and use its JSON content as data to update the table
-                        result = await db.tableUpdate(
-                            data.update.tablename,
-                            data.update.row,
-                            data.update.newData
-                        );
-                    }
-					else if (authCheckAdmin) {
-                        result = await db.dataUpdate(
-                            data.update.username,
-                            data.update.password
-                        );
-                    }
-                    break;
-
-                case Boolean(data.update): // Update own password
-                    result = await db.dataUpdate(
-                        data.username,
-                        data.update.password
-                    );
-                    break;
-
-                case Boolean(data.delete): // Delete
-                    if (data.delete.tablename) {
-                        result = await db.tableDelete(data.delete.tablename, data.delete.row);
-                        tableList = await db.getTableList();
-                    } else if (authCheckAdmin) {
-                        result = await db.dataDelete(data.delete.username);
-                        userList = await db.getUserList();
-                    }
-                    break;
-                
-                case Boolean(data.restore): // Restore
-                    if (data.restore.tablename) {
-                        result = await db.tableRestore(data.restore.tablename);
-                        tableList = await db.getTableList();
-                    } else if (authCheckAdmin) {
-                        result = await db.dataRestore(data.restore.username);
-                        userList = await db.getUserList();
-                    }
-                    break;
-
-                case Boolean(data.drop) && authCheckAdmin: // Drop
-                    if (data.drop.tablename) {
-                        result = await db.tableDrop(data.drop.tablename);
-                        tableList = await db.getTableList();
-                    } else {
-                        result = await db.dataDrop(data.drop.username);
-                        userList = await db.getUserList();
-                    }
-                    break;
-
-					default: throw new Error('Invalid request format');
+					case "reload":
+					case "restart":
+					case "reboot":
+						result = `${serverName} restarting`;
+						restart();
+						break;
+					case "shutdown":
+					case "exit":
+					case "kill":
+					case "stop":
+						result = `${serverName} stopped`;
+						setTimeout(() => { shutdown();}, 250);
+						break;
+					default: throw new Error('Invalid command');
 				}
-				res.json({ success: true, data: result }); // Respond with the result or any appropriate response
-			}
-		}
-		catch (error) {
-			console.error(`Error processing POST request: ${error.message}`); // Handle errors
-			res.status(500).json({ success: false, error: error.message });
-		}
-		console.log(`POST request handled with these params: ${JSON.stringify(data)}`);
-	});
+				res.json({ success: true, data: result });
+			} catch (error) { res.status(400).json({ success: false, error: error.message }); }
+		});
+		
+		app.post("/create", async (req, res) => {
+			try {
+				if (!authCheck(req.body.username, req.body.password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				else if (userList.includes(req.body.content.username)) { throw new Error(`'${req.body.content.username}' already exists`); }
+				else if (req.body.tablename) {
+					result = await db.tableCreate(
+						req.body.tablename,
+						req.body.content
+					);
+					tableList = await db.getTableData();
+				} else if (req.body.content) {
+					result = await db.dataCreate(
+						req.body.content.username,
+						req.body.content.password,
+						(authCheckAdmin(req.body.username)) ? req.body.content.admin : false
+					);
+					listUpdate();
+				}
+				else { throw new Error(`Invalid format`); }
+				res.json({ success: true, data: result });
+			} catch (error) { res.status(400).json({ success: false, error: error.message }); }
+		});
+
+		app.post("/read", async (req, res) => {
+			try {
+				if (!authCheck(req.body.username, req.body.password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				else if (req.body.tablename) { result = await db.tableRead(req.body.tablename, req.body.id); }
+				else if (userData.find((u) => (u.username === req.body.content.username))) { result = await db.dataRead(req.body.content.username); }
+				else { throw new Error(`Username '${req.body.content}' not found`); }
+				res.json({ success: true, data: result });
+			} catch (error) { res.status(400).json({ success: false, error: error.message }); }
+		});
+
+		app.post("/update", async (req, res) => {
+			try {
+				if (!authCheck(req.body.username, req.body.password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				if (req.body.tablename) {
+					result = await db.tableUpdate(
+						req.body.tablename,
+						req.body.content
+					);
+				} else if (req.body.content) {
+					result = await db.dataUpdate(
+						req.body.content.username,
+						req.body.content.password,
+						(authCheckAdmin(req.body.username)) ? req.body.content.admin : false
+					);
+					listUpdate();
+				}
+				res.json({ success: true, data: result });
+			} catch (error) { res.status(400).json({ success: false, error: error.message }); }
+		});
+
+		app.post("/delete", async (req, res) => {
+			try {
+				if (!authCheck(req.body.username, req.body.password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				if (req.body.tablename) {
+					result = await db.tableDelete(req.body.tablename, req.body.id);
+					tableList = await db.getTableData();
+				} else {
+					if (req.body.username === req.body.content.username) { throw new Error(`Can't delete the active user`); }
+					else if (!userList.includes(req.body.content.username)) { throw new Error(`Username '${req.body.content.username}' doesn't exist`); }
+					else if (userListDeleted.includes(req.body.content.username)) { throw new Error(`Username '${req.body.content.username}' already (soft)deleted`); }
+					result = await db.dataDelete(req.body.content.username);
+					listUpdate();
+				}
+				res.json({ success: true, data: result });
+			} catch (error) { res.status(400).json({ success: false, error: error.message }); }
+		});
+
+		app.post("/restore", async (req, res) => {
+			try {
+				if (!authCheck(req.body.username, req.body.password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				if (req.body.tablename) {
+					let tablename = req.body.tablename.startsWith("deleted_") ? req.body.tablename : `deleted_${req.body.tablename}`;
+					if (!tableList.includes(tablename)) { throw new Error(`Table '${req.body.tablename}' doesn't exist`); }
+					result = await db.tableRestore(tablename);
+					tableList = await db.getTableData();
+				} else {
+					if (!userList.includes(req.body.content.username)) { throw new Error(`Username '${req.body.content.username}' doesn't exist`); }
+					else if (!userListDeleted.includes(req.body.content.username)) { throw new Error(`Username '${req.body.content.username}' already restored`); }
+					result = await db.dataRestore(req.body.username);
+					listUpdate();
+				}
+				res.json({ success: true, data: result });
+			} catch (error) { res.status(400).json({ success: false, error: error.message }); }
+		});
+
+		app.post("/drop", async (req, res) => {
+			try {
+				if (!authCheck(req.body.username, req.body.password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				if (req.body.tablename) {
+					if (!tableList.includes(req.body.tablename)) { throw new Error(`Table '${req.body.tablename}' doesn't exist`); }
+					result = await db.tableDrop(req.body.tablename);
+					tableList = await db.getTableData();
+				} else {
+					if (!userList.includes(req.body.content.username)) { throw new Error(`Username '${req.body.content.username}' doesn't exist`); }
+					result = await db.dataDrop(req.body.content.username);
+					listUpdate();
+				}
+				res.json({ success: true, data: result });
+			} catch (error) { res.status(400).json({ success: false, error: error.message }); }
+		});
+	}
+	catch (error) { console.error(`Error processing POST request: ${error.message}`); }
 }
 
 process.on('SIGTERM', shutdown); // Handle shutdown signals
@@ -160,5 +216,10 @@ function shutdown() { // Graceful shutdown function, forces shutdown if exit pro
         process.exit(22);
     }, 2000); // 2 seconds
 }
-
+function restart() {
+    server.close(() => { // Exit the process
+        console.log(`${serverName} restarting`);
+    });
+	startServer();
+}
 startServer(); // Start the async server function

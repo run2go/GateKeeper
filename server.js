@@ -34,9 +34,13 @@ async function startServer(){
 	// Require the db.js file to access the sequelize functionality
 	const db = require('./db');
 	
-	// Fetch the latest list of valid usernames from the database
+	// Fetch the list of valid usernames from the database
 	let userList = await db.getUserList();
 	console.log(`Fetched userlist: ${userList}`);
+
+	// Fetch the list of available tables from the database
+	let tableList = await db.getTableList();
+	console.log(`Fetched tablelist: ${tableList}`);
 
 	// Basic functionality to forward requests on the root directory
 	app.get("/", (req, res) => {
@@ -52,68 +56,115 @@ async function startServer(){
 
 	// Handle POST requests for the API endpoint
 	app.post(apiEndpoint, async (req, res) => {
-		const receivedData = req.body;
+		const data = req.body;
 
 		try {
 			// Check if the provided username is in the list of valid usernames
-			if (!userList.includes(receivedData.username)) {
+			if (!userList.includes(data.username)) {
 				throw new Error('Invalid username');
 			}
 			
 			// Authenticate the given credentials if valid
-			const authCheck = await db.auth(receivedData.username, receivedData.password);
+			const authCheck = await db.authCheck(data.username, data.password);
 			if (authCheck) {
+				const authCheckAdmin = await db.authCheckAdmin(data.username);
 				let result;
 				switch (true) {
 					// Command
-					case Boolean(receivedData.cmd):
-						switch (receivedData.cmd) {
+					case Boolean(data.cmd) && authCheckAdmin:
+						switch (data.cmd) {
                             case "help": result = helpURL; break;
-                            case "list": result = userList; break;
+                            case "listusers": result = userList; break;
+                            case "listtables": result = tableList; break;
                             default: throw new Error('Invalid command');
 						}
 						break;
 						
-					// Create
-					case Boolean(receivedData.create):
+				// Create
+				case Boolean(data.create):
+					if (data.create.tablename) {
+						if (data.create.columns && Array.isArray(data.create.columns)) {
+							// Create a new table with dynamic columns
+							result = await db.tableCreate(data.create.tablename, data.create.columns);
+							tableList = await db.getTableList();
+						} else {
+							// Handle the case where columns are not provided
+							throw new Error('Invalid column information');
+						}
+					} else if (authCheckAdmin) {
 						result = await db.dataCreate(
-							receivedData.create.username,
-							receivedData.create.password
+							data.create.username,
+							data.create.password
 						);
-						userList = await db.getUserList(); // Update the current userlist
-						break;
+						userList = await db.getUserList();
+					}
+					break;
 
-					// Read
-					case Boolean(receivedData.read):
-						result = await db.dataRead(receivedData.read.username);
-						break;
+                // Read
+                case Boolean(data.read) && authCheckAdmin:
+                    if (data.read.tablename) {
+                        result = await db.tableRead(data.read.tablename, data.read.row);
+                    } else {
+                        result = await db.dataRead(data.read.username);
+                    }
+                    break;
 
-					// Update
-					case Boolean(receivedData.update):
-						result = await db.dataUpdate(
-							receivedData.update.username,
-							receivedData.update.password
-						);
-						break;
+                // Update
+                case Boolean(data.update):
+                    if (data.update.tablename) {
+                        // Use the provided field as table name and use its JSON content as data to update the table
+                        result = await db.tableUpdate(
+                            data.update.tablename,
+                            data.update.row,
+                            data.update.newData
+                        );
+                    } else if (authCheckAdmin) {
+                        result = await db.dataUpdate(
+                            data.update.username,
+                            data.update.password
+                        );
+                    }
+                    break;
 
-					// Delete
-					case Boolean(receivedData.delete):
-						result = await db.dataDelete(receivedData.delete.username);
-						userList = await db.getUserList(); // Update the current userlist
-						break;
+                // Update own password
+                case Boolean(data.update):
+                    result = await db.dataUpdate(
+                        data.username,
+                        data.update.password
+                    );
+                    break;
 
+                // Delete
+                case Boolean(data.delete):
+                    if (data.delete.tablename) {
+                        result = await db.tableDelete(data.delete.tablename, data.delete.row);
+                        tableList = await db.getTableList();
+                    } else if (authCheckAdmin) {
+                        result = await db.dataDelete(data.delete.username);
+                        userList = await db.getUserList();
+                    }
+                    break;
+                // Restore
+                case Boolean(data.restore) && authCheckAdmin:
+                    if (data.restore.tablename) {
+                        result = await db.tableRestore(data.restore.tablename);
+                        tableList = await db.getTableList();
+                    } else {
+                        result = await db.dataRestore(data.restore.username);
+                        userList = await db.getUserList();
+                    }
+                    break;
 
-					// Restore
-					case Boolean(receivedData.restore):
-						result = await db.dataRestore(receivedData.restore.username);
-						userList = await db.getUserList(); // Update the current userlist
-						break;
-	
-					// Drop
-					case Boolean(receivedData.drop):
-						result = await db.dataDrop(receivedData.drop.username);
-						userList = await db.getUserList(); // Update the current userlist
-						break;
+                // Drop
+                case Boolean(data.drop) && authCheckAdmin:
+                    if (data.drop.tablename) {
+                        result = await db.tableDrop(data.drop.tablename);
+                        tableList = await db.getTableList();
+                    } else {
+                        result = await db.dataDrop(data.drop.username);
+                        userList = await db.getUserList();
+                    }
+                    break;
 
 					default:
 						throw new Error('Invalid request format');
@@ -127,7 +178,7 @@ async function startServer(){
 			res.status(500).json({ success: false, error: error.message });
 		}
 
-		console.log(`POST request handled with these params: ${JSON.stringify(receivedData)}`);
+		console.log(`POST request handled with these params: ${JSON.stringify(data)}`);
 	});
 }
 

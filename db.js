@@ -88,7 +88,7 @@ const maintable = sequelize.define(dbMaintable, {
 sequelize.sync();
 
 // Function to authenticate provided usernames using bcrypt to compare password hashes
-async function auth(providedUser, providedPass) {
+async function authCheck(providedUser, providedPass) {
     try {
         const user = await maintable.findOne({
             where: {
@@ -118,6 +118,26 @@ async function auth(providedUser, providedPass) {
     }
 }
 
+// Function to check if the provided provided usernames is an admin
+async function authCheckAdmin(providedUser) {
+    try {
+        const user = await maintable.findOne({
+            where: {
+                username: providedUser,
+            },
+        });
+
+        if (!user) { // Throw an error indicating the user has not been found
+            throw new Error('User not found');
+        }
+
+        // If the user is found and is an admin, return true; otherwise, return false
+        return user.admin;
+    } catch (error) {
+        throw new Error(`Admin Check: ${error.message}`);
+    }
+}
+
 // Function to fetch usernames from the user table
 async function getUserList() {
     try {
@@ -132,7 +152,7 @@ async function getUserList() {
     }
 }
 
-// Function to create user entry
+// Function to CREATE user entry
 async function dataCreate(username, password, isAdmin = false) {
     try {
         const [user, created] = await maintable.findOrCreate({
@@ -159,7 +179,7 @@ async function dataCreate(username, password, isAdmin = false) {
     }
 }
 
-// Function to get user data by username
+// Function to READ user data by username
 async function dataRead(username) {
     try {
         const user = await maintable.findOne({
@@ -174,10 +194,10 @@ async function dataRead(username) {
     }
 }
 
-// Function to update or create user data
+// Function to UPDATE or create user data
 async function dataUpdate(username, password, isAdmin = false) {
     try {
-        const [user, created] = await maintable.findOrCreate({
+        const user = await maintable.findOne({
             where: {
                 username: username,
                 deletedAt: null,
@@ -188,11 +208,11 @@ async function dataUpdate(username, password, isAdmin = false) {
             },
         });
 
-        // If not created, update the existing user's password and admin status
-        if (!created) {
+        if (user) {
+            // User found, update the password and admin status
             user.password = password;
             user.admin = isAdmin;
-            await user.save();
+            await user.save(); // Save the changes to the database
         }
 
         return user;
@@ -201,7 +221,7 @@ async function dataUpdate(username, password, isAdmin = false) {
     }
 }
 
-// Function to remove user data by username (soft delete)
+// Function to DELETE user data by username (soft delete)
 async function dataDelete(username) {
     try {
         const user = await maintable.findOne({
@@ -223,7 +243,7 @@ async function dataDelete(username) {
     }
 }
 
-// Function to restore user data by username that has been (soft) deleted
+// Function to RESTORE user data by username that has been (soft) deleted
 async function dataRestore(username) {
     try {
         const user = await maintable.findOne({
@@ -244,7 +264,7 @@ async function dataRestore(username) {
     }
 }
 
-// Function to remove user data by username (hard delete)
+// Function to DROP user data by username (hard delete)
 async function dataDrop(username) {
     try {
         const user = await maintable.findOne({
@@ -276,9 +296,199 @@ async function dataDrop(username) {
     }
 }
 
+// Function to list all existing table names
+async function getTableList() {
+    try {
+        let query;
+
+        if (dbDialect === 'sqlite') { // SQLite-specific table list query
+            query = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'deleted_%'";
+        } else { // Default SQL query
+            query = "SHOW TABLES LIKE 'deleted_%'";
+        }
+
+        // Execute the query
+        const result = await sequelize.query(query, { type: Sequelize.QueryTypes.SELECT });
+
+        // Extract table names from the result
+        const tables = result.map((row) => (dbDialect === 'sqlite' ? row.name : row[`Tables_in_${dbDatabase}`]));
+
+        return { success: true, data: tables };
+    } catch (error) {
+        throw new Error(`Error fetching table list: ${error.message}`);
+    }
+}
+
+
+// Function to CREATE a new table
+async function tableCreate(tablename, columns) {
+    try {
+        if (tablename.startsWith("deleted_")) {
+            throw new Error(`Invalid table name: ${tablename}`);
+        }
+
+        if (!Array.isArray(columns) || columns.length === 0) {
+            throw new Error('Invalid column information');
+        }
+
+        // Construct the column definitions for the SQL query
+        const columnDefinitions = columns.map(column => {
+            const { name, type, options } = column;
+            let definition = `${name} ${type}`;
+            if (options && options.length > 0) {
+                definition += ` ${options.join(' ')}`;
+            }
+            return definition;
+        }).join(', ');
+
+        // Construct the CREATE TABLE query
+        let query;
+        if (dbDialect === 'sqlite') {
+            query = `CREATE TABLE IF NOT EXISTS ${tablename} (${columnDefinitions})`;
+        } else {
+            query = `CREATE TABLE IF NOT EXISTS ${tablename} (${columnDefinitions})`;
+        }
+
+        await sequelize.query(query);
+        return { success: true, message: `Table ${tablename} created successfully` };
+    } catch (error) {
+        throw new Error(`Error creating table: ${error.message}`);
+    }
+}
+
+// Function to READ a specific row or a whole table
+async function tableRead(tablename, row = false) {
+    try {
+        if (tablename.startsWith("deleted_")) {
+            throw new Error(`Invalid table name: ${tablename}`);
+        }
+
+        // Create query to print either a single row or a whole table
+        let query = `SELECT * FROM ${tablename}${row ? ' WHERE id = ' + row : ''}`;
+
+        const result = await sequelize.query(query, { type: Sequelize.QueryTypes.SELECT });
+        return { success: true, data: result };
+    } catch (error) {
+        throw new Error(`Error reading table: ${error.message}`);
+    }
+}
+
+// Function to UPDATE an existing table or add new columns
+async function tableUpdate(tablename, row, newData) {
+    try {
+        if (tablename.startsWith("deleted_")) {
+            throw new Error(`Invalid table name: ${tablename}`);
+        }
+
+        // Construct the UPDATE query based on the provided data
+        const updateQuery = `UPDATE ${tablename} SET name = :name WHERE id = :id`;
+
+        // Execute the UPDATE query with the provided parameters
+        const [updatedRows] = await sequelize.query(updateQuery, {
+            replacements: { id: row, name: newData.name },
+            type: Sequelize.QueryTypes.UPDATE,
+        });
+
+        // Check if any rows were updated
+        if (updatedRows > 0) {
+            return { success: true, message: `Row ${row} in table ${tablename} updated successfully` };
+        } else {
+            return { success: false, message: `No rows updated. Row with id ${row} not found in table ${tablename}` };
+        }
+    } catch (error) {
+        throw new Error(`Error updating table: ${error.message}`);
+    }
+}
+
+// Function to DELETE a row from a table or soft deleting a whole table
+async function tableDelete(tablename, row = false) {
+    try {
+        if (row) {
+            // If row is provided, delete the specific row
+            const deleteQuery = `DELETE FROM ${tablename} WHERE id = :id`;
+            const [deletedRows] = await sequelize.query(deleteQuery, {
+                replacements: { id: row },
+                type: Sequelize.QueryTypes.DELETE,
+            });
+
+            if (deletedRows > 0) {
+                return { success: true, message: `Row ${row} deleted successfully from table ${tablename}` };
+            } else {
+                return { success: false, message: `No rows deleted. Row with id ${row} not found in table ${tablename}` };
+            }
+        } else {
+            // If row is not provided, rename the table with a prefix "deleted_"
+            const newTablename = `deleted_${tablename}`;
+
+            // Construct the RENAME TABLE query
+            const renameQuery = `ALTER TABLE ${tablename} RENAME TO ${newTablename}`;
+            await sequelize.query(renameQuery, { type: Sequelize.QueryTypes.RAW });
+
+            return { success: true, message: `Table ${tablename} soft deleted` };
+        }
+    } catch (error) {
+        throw new Error(`Error deleting or renaming table: ${error.message}`);
+    }
+}
+
+// Function to RESTORE a soft-deleted table by removing the "deleted_" prefix
+async function tableRestore(tablename) {
+    try {
+        if (!tablename.startsWith("deleted_")) {
+            throw new Error(`Invalid table name: ${tablename}`);
+        }
+
+        // Remove the "deleted_" prefix to get the original table name
+        const originalTablename = tablename.replace(/^deleted_/i, '');
+
+        // Check if the original table exists
+        const originalTableExists = await sequelize.getQueryInterface().showAllTables()
+            .then(tables => tables.includes(originalTablename));
+
+        if (originalTableExists) { // Handle the case when a to be restored table already exists
+            throw new Error(`Table ${originalTablename} already exists. Cannot restore the soft-deleted table.`);
+        }
+
+        // Rename the soft-deleted table to the original table name
+        const renameQuery = `ALTER TABLE ${tablename} RENAME TO ${originalTablename}`;
+        await sequelize.query(renameQuery);
+
+        return { success: true, message: `Table ${tablename} restored as ${originalTablename}` };
+    } catch (error) {
+        throw new Error(`Error restoring table: ${error.message}`);
+    }
+}
+
+// Function to DROP a table
+async function tableDrop(tablename) {
+    try {
+        if (tablename.startsWith("deleted_")) {
+            throw new Error(`Invalid table name: ${tablename}`);
+        }
+
+        let dropQuery;
+
+        if (dbDialect === 'sqlite') { // SQLite-specific table drop query
+            dropQuery = `DROP TABLE IF EXISTS ${tablename}`;
+        } else { // Default SQL table drop query
+            dropQuery = `DROP TABLE IF EXISTS ${tablename}`;
+        }
+
+        // Execute the DROP TABLE query
+        await sequelize.query(dropQuery, { type: Sequelize.QueryTypes.RAW });
+
+        return { success: true, message: `Table ${tablename} dropped successfully` };
+    } catch (error) {
+        throw new Error(`Error dropping table: ${error.message}`);
+    }
+}
+
+
 // Export the functions for use in other modules
 module.exports = {
-	auth,
+	authCheck,
+    authCheckAdmin,
+
     getUserList,
 	dataCreate,
     dataRead,
@@ -286,4 +496,12 @@ module.exports = {
     dataDelete,
     dataRestore,
 	dataDrop,
+
+    getTableList,
+    tableCreate,
+    tableRead,
+    tableUpdate,
+    tableDelete,
+    tableRestore,
+    tableDrop,
 };

@@ -1,4 +1,4 @@
-// tests/functionality.test.js
+// tests/maintable.test.js
 
 const { spawn } = require('child_process'); // Required to spawn a test instance of the server
 const request = require('supertest'); // Used to send http requests to the spawned instance
@@ -72,11 +72,11 @@ describe('Server Test - POST', () => {
 			.send(payload);
 	};
 	
-    test('Test case 1: List command', async () => {
+    test('Test case 1: List users command', async () => {
         const listResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
-            cmd: 'list',
+            cmd: 'listusers',
         });
         expect(listResponse.body.success).toBeTruthy();
 		console.log('list command response:', listResponse.body);
@@ -132,7 +132,17 @@ describe('Server Test - POST', () => {
 		console.log('delete user response:', deleteUserResponse.body);
 	});
 
-    test('Test case 7: Attempt to delete admin', async () => {
+    test('Test case 7: Restore deleted user', async () => {
+        const restoreUserResponse = await makePostRequest({
+            username: 'test_admin',
+            password: 'test_pass',
+            restore: { username: 'test_user' },
+        });
+        expect(restoreUserResponse.body.success).toBeTruthy();
+		console.log('restore deleted user response:', restoreUserResponse.body);
+	});
+
+    test('Test case 8: Delete admin', async () => {
 		const deleteAdminResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
@@ -142,25 +152,24 @@ describe('Server Test - POST', () => {
 		console.log('delete admin response:', deleteAdminResponse.body);
 	});
 
-    test('Test case 8: Drop a soft-deleted user', async () => {
+    test('Test case 9: Drop user', async () => {
 		const dropUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
             drop: { username: 'test_user' },
         });
         expect(dropUserResponse.body.success).toBeTruthy();
-		console.log('drop deleted user response:', dropUserResponse.body);
+		console.log('drop user response:', dropUserResponse.body);
 	});
-    
 
-    test('Test case 9: Drop a admin user', async () => {
+    test('Test case 10: Drop admin', async () => {
 		const dropUserResponse = await makePostRequest({
             username: 'test_admin',
             password: 'test_pass',
             drop: { username: 'temp_admin' },
         });
         expect(dropUserResponse.body.success).toBeTruthy();
-		console.log('drop admin user response:', dropUserResponse.body);
+		console.log('drop admin response:', dropUserResponse.body);
 	});
 
     afterAll(async () => { await stopServer(); });

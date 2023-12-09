@@ -1,0 +1,127 @@
+// tests/dynamictable.test.js
+
+const { spawn } = require('child_process'); // Required to spawn a test instance of the server
+const request = require('supertest'); // Used to send http requests to the spawned instance
+const path = require('path'); // Allow accessing files relative to the current directory
+
+// Access parameters in the config.ini file
+require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });
+const serverPort = process.env.SERVER_PORT;
+const apiEndpoint = process.env.API_ENDPOINT;
+
+let serverProcess;
+
+async function startServer() {
+	const serverPath = path.resolve(__dirname, '../server.js');
+
+	// Spawn the process
+	serverProcess = spawn('node', [serverPath]);
+
+	// Use a promise to wait for the server to start
+	await new Promise((resolve) => {
+		serverProcess.stdout.on('data', (data) => {
+			console.log(`Process Output: ${data}`);
+			if (data.includes('Now listening on port')) {
+				setTimeout(resolve, 500); // Wait 0.5s to ensure proper startup
+			}
+		});
+	});
+
+	serverProcess.stderr.on('data', (data) => {
+		console.error(`Process Error: ${data}`);
+	});
+}
+
+async function stopServer() {
+	serverProcess.kill('SIGTERM');
+	await new Promise((resolve) => {
+		serverProcess.on('exit', () => {
+			resolve();
+		});
+	});
+}
+
+describe('Server Test - POST', () => {
+	beforeAll(async () => {  await startServer(); });
+
+	// Helper function to make a POST request with a given payload
+	const makePostRequest = async (payload) => {
+		return await request(`http://127.0.0.1:${serverPort}`)
+			.post(apiEndpoint)
+			.send(payload);
+	};
+
+    test('Test case 1: List tables command', async () => {
+        const listResponse = await makePostRequest({
+            username: 'test_admin',
+            password: 'test_pass',
+            cmd: 'listtables',
+        });
+        expect(listResponse.body.success).toBeTruthy();
+		console.log('list command response:', listResponse.body);
+	});
+
+    test('Test case 2: Create table', async () => {
+        const createUserResponse = await makePostRequest({
+            username: "test_admin",
+            password: "test_pass",
+            create: {
+                tablename: "test_table",
+                data: [
+                    { name: "id", type: "INTEGER", options: ["PRIMARY KEY"] },
+                    { name: "text", type: "VARCHAR(255)", value: "test string" }
+                ]
+            }
+        });
+        expect(createUserResponse.body.success).toBeTruthy();
+		console.log('create user response:', createUserResponse.body);
+	});
+
+    test('Test case 3: Read table', async () => {
+        const readUserResponse = await makePostRequest({
+            username: 'test_admin',
+            password: 'test_pass',
+            read: { tablename: 'test_table' },
+        });
+        expect(readUserResponse.body.success).toBeTruthy();
+		console.log('read user response:', readUserResponse.body);
+	});
+
+    test('Test case 4: Update table data', async () => {
+        const updateUserResponse = await makePostRequest({
+            username: "test_admin",
+            password: "test_pass",
+            create: {
+                tablename: "test_table",
+                data: [
+                    { name: "id", value: 26 },
+                    { name: "text", value: "VARCHAR(255)" }
+                ]
+            }
+        });
+        expect(updateUserResponse.body.success).toBeTruthy();
+		console.log('update table response:', updateUserResponse.body);
+	});
+
+    test('Test case 5: Delete table', async () => {
+        const deleteUserResponse = await makePostRequest({
+            username: 'test_admin',
+            password: 'test_pass',
+            delete: { tablename: 'test_table' },
+        });
+        expect(deleteUserResponse.body.success).toBeTruthy();
+		console.log('delete table response:', deleteUserResponse.body);
+	});
+
+    test('Test case 6: Drop a soft-deleted user', async () => {
+		const dropUserResponse = await makePostRequest({
+            username: 'test_admin',
+            password: 'test_pass',
+            drop: { tablename: 'test_table' },
+        });
+        expect(dropUserResponse.body.success).toBeTruthy();
+		console.log('drop deleted table response:', dropUserResponse.body);
+	});
+
+    afterAll(async () => { await stopServer(); });
+});

@@ -7,7 +7,6 @@ const path = require('path'); // Allow accessing files relative to the current d
 // Access parameters in the config.ini file
 require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });
 const serverPort = process.env.SERVER_PORT;
-const apiEndpoint = process.env.API_ENDPOINT;
 
 let serverProcess;
 

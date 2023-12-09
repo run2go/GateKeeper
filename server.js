@@ -5,7 +5,6 @@ const serverName = process.env.SERVER_NAME;
 const serverPort = process.env.SERVER_PORT;
 const serverURL = process.env.SERVER_URL;
 const redirectURL = process.env.REDIRECT_URL;
-const apiEndpoint = process.env.API_ENDPOINT;
 const helpURL = process.env.HELP_URL;
 const dbUsername = process.env.DB_USERNAME;
 const dbPassword = process.env.DB_PASSWORD;

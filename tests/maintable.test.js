@@ -35,23 +35,23 @@ async function stopServer() {
 }
 
 describe('Server Test - GET', () => {
-	beforeAll(async () => {  await startServer(); });
+    beforeAll(startServer);
 
-    test('Test 1: Check basic GET response', async () => {
+    test('Test 1: Check response', async () => {
         const response = await request(`http://127.0.0.1:${serverPort}`).get(`/`);
         expect([302, 200]).toContain(response.status);
     });
-	
-    test('Test 2: Check invalid endpoint redirect functionality', async () => {
+    
+    test('Test 2: Try invalid url', async () => {
         const response = await request(`http://127.0.0.1:${serverPort}`).get(`nothing_here`);
         expect([302]).toContain(response.status);
     });
 
-    afterAll(async () => { await stopServer(); });
+    afterAll(stopServer);
 });
 
 describe('Server Test - POST', () => {
-	beforeAll(async () => {  await startServer(); });
+    beforeAll(startServer);
 	
 	const makePostRequest = async (endpoint, payload) => {
 		return await request(`http://127.0.0.1:${serverPort}`).post(endpoint).send(payload);
@@ -82,5 +82,5 @@ describe('Server Test - POST', () => {
 			executeTest(description, endpoint, payload, expectation);
 		});
 
-    afterAll(async () => { await stopServer(); });
+    afterAll(stopServer);
 });

@@ -7,4 +7,4 @@ CREATE TABLE maintable (
     updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
     deletedAt DATETIME
 );
-INSERT INTO maintable (username, password, admin) VALUES ('test_user', 'test_pass', 1);
+INSERT INTO maintable (username, password, admin) VALUES ('test_admin', 'test_pass', 1);

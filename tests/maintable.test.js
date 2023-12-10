@@ -20,7 +20,7 @@ async function startServer() {
 	await new Promise((resolve) => {
 		serverProcess.stdout.on('data', (data) => {
 			console.log(`Process Output: ${data}`);
-			if (data.includes('Now listening on port')) { setTimeout(resolve, 500); } // Wait 0.5s to ensure proper startup
+			if (data.includes('Now listening on port')) { setTimeout(resolve, 100); } // Wait 1s to ensure proper startup
 		});
 	});
 
@@ -59,8 +59,8 @@ describe('Server Test - POST', () => {
     const executeTest = async (description, endpoint, payload, expectation) => {
         test(description, async () => {
             const response = await makePostRequest(endpoint, payload);
-			if (expectation === true) { expect(response.body.success).toBeTruthy(); }
-			 else if (expectation === false) { expect(response.body.success).toBeFalsy(); }
+			if (expectation) { expect(response.body.success).toBeTruthy(); }
+			 else if (!expectation) { expect(response.body.success).toBeFalsy(); }
             console.log(`${description} response:`, response.body);
         });
     };

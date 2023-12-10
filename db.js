@@ -266,26 +266,27 @@ async function dataDrop(username) { // Function to DROP user data by username (h
 }
 
 /* Table Operations */
-async function tableCreate(tablename, jsonData) { // Function to CREATE a new table
+async function tableCreate(tablename, tabledata) { // Function to CREATE a new table
     try {
         const result = await sequelize.transaction(async (t) => {
             if (tablename === dbMaintable) { throw new Error(`${dbMaintable} is protected`); }
-            else if (tablename.startsWith("deleted_")) { throw new Error(`Invalid table name: ${tablename}`); }
-            else if (!jsonData) { throw new Error(`No table data provided`); }
+			else if (tablename.startsWith("deleted_")) { throw new Error(`Invalid table name: ${tablename}`); }
+			else if (!tabledata) { throw new Error(`Invalid table data provided`); }
 
-            const { data } = jsonData.create;
-            data.deletedAt = { // Add the deletedAt column to support soft deleting
-                type: DataTypes.DATE,
-                allowNull: true,
-            };
+			tabledata.deletedAt = {  // Add the deletedAt column to support soft deleting
+				type: DataTypes.DATE,
+				allowNull: true,
+			};
+            const { content } = tabledata;
+            const dynamicModel = sequelize.define(tablename, tabledata);
+            await dynamicModel.sync({ alter: true, transaction: t });
 
-            const dynamicModel = sequelize.define(tablename, data); // Define the model dynamically
-            await dynamicModel.sync({ alter: true, transaction: t }); // Synchronize the model with the database to create the table
             return { success: true, message: `Table '${tablename}' created and data inserted successfully` };
         });
         return result;
     } catch (error) { throw new Error(`Error creating table: ${error.message}`); }
 }
+
 
 async function tableRead(tablename, id = false) { // Function to READ a specific row or a whole table
     try {

@@ -43,7 +43,7 @@ describe('Server Test - GET', () => {
     });
     
     test('Test 2: Try invalid url', async () => {
-        const response = await request(`http://127.0.0.1:${serverPort}`).get(`/nothing_here`);
+        const response = await request(`http://127.0.0.1:${serverPort}`).get(`/nothing_here.file`);
         expect([302]).toContain(response.status);
     });
 

@@ -36,7 +36,7 @@ async function startServer(){
 			userlistAdmin = userData.filter((user) => user.admin === true).map((user) => user.username);
 		}
 		let tableList = await db.getTableData(); // Fetch the list of available tables from the database
-		if (userlistAdmin.length === 0) { await db.dataCreate(dbUsername, dbPassword, true); } // Add admin user if adminlist is empty
+		if (userlistAdmin.length === 0) { await db.dataCreate(dbUsername, dbPassword, true); } // Add db admin user if adminlist is empty
 		
 		function authCheck(user, pass) { return userData.find((u) => (u.username === user && u.password === pass)) ? true : false; }
 		function authCheckAdmin(user) { return userData.find((u) => (u.username === user && u.admin === true)) ? true : false; }
@@ -97,19 +97,21 @@ async function startServer(){
 		
 		app.post("/create", async (req, res) => {
 			try {
-				if (!authCheck(req.body.username, req.body.password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
-				else if (userList.includes(req.body.content.username)) { throw new Error(`'${req.body.content.username}' already exists`); }
-				else if (req.body.tablename) {
+				const { username, password, content, tablename } = req.body; // Deconstruct req.body contents
+				if (!authCheck(username, password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				else if (tablename && content) {
+					if (tableList.includes(tablename)) { throw new Error(`Table '${tablename}' already exists`); }
 					result = await db.tableCreate(
-						req.body.tablename,
-						req.body.content
+						tablename,
+						content
 					);
 					tableList = await db.getTableData();
-				} else if (req.body.content) {
+				} else if (content) {
+					if (userList.includes(content.username)) { throw new Error(`Username '${content.username}' already exists`); }
 					result = await db.dataCreate(
-						req.body.content.username,
-						req.body.content.password,
-						(authCheckAdmin(req.body.username)) ? req.body.content.admin : false
+						content.username,
+						content.password,
+						(authCheckAdmin(username)) ? content.admin : false
 					);
 					listUpdate();
 				}
@@ -120,27 +122,36 @@ async function startServer(){
 
 		app.post("/read", async (req, res) => {
 			try {
-				if (!authCheck(req.body.username, req.body.password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
-				else if (req.body.tablename) { result = await db.tableRead(req.body.tablename, req.body.id); }
-				else if (userData.find((u) => (u.username === req.body.content.username))) { result = await db.dataRead(req.body.content.username); }
-				else { throw new Error(`Username '${req.body.content}' not found`); }
+				const { username, password, content, tablename } = req.body; // Deconstruct req.body contents
+				if (!authCheck(username, password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				else if (tablename) {
+					result = await db.tableRead(tablename, content.id);
+					}
+				else if (content) {
+					if (!userList.includes(content.username)) { throw new Error(`Username '${content.username}' not found`); }
+					else if (userData.find((u) => (u.username === content))) { result = await db.dataRead(content); }
+				}
+				else { throw new Error(`Invalid format`); }
 				res.json({ success: true, data: result });
 			} catch (error) { res.status(400).json({ success: false, error: error.message }); }
 		});
 
 		app.post("/update", async (req, res) => {
 			try {
-				if (!authCheck(req.body.username, req.body.password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
-				if (req.body.tablename) {
+				const { username, password, content, tablename } = req.body; // Deconstruct req.body contents
+				if (!authCheck(username, password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				if (tablename) {
+					if (!tableList.includes(tablename)) { throw new Error(`Table '${tablename}' doesn't exist`); }
 					result = await db.tableUpdate(
-						req.body.tablename,
-						req.body.content
+						tablename,
+						content
 					);
-				} else if (req.body.content) {
+				} else if (content) {
+					if (!userList.includes(content.username)) { throw new Error(`Username '${content.username}' doesn't exist`); }
 					result = await db.dataUpdate(
-						req.body.content.username,
-						req.body.content.password,
-						(authCheckAdmin(req.body.username)) ? req.body.content.admin : false
+						content.username,
+						content.password,
+						(authCheckAdmin(username)) ? content.admin : false
 					);
 					listUpdate();
 				}
@@ -150,15 +161,17 @@ async function startServer(){
 
 		app.post("/delete", async (req, res) => {
 			try {
-				if (!authCheck(req.body.username, req.body.password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
-				if (req.body.tablename) {
-					result = await db.tableDelete(req.body.tablename, req.body.id);
+				const { username, password, content, tablename } = req.body; // Deconstruct req.body contents
+				if (!authCheck(username, password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				if (tablename) {
+					if (!tableList.includes(tablename)) { throw new Error(`Table '${tablename}' doesn't exist`); }
+					result = await db.tableDelete(tablename, content.id);
 					tableList = await db.getTableData();
 				} else {
-					if (req.body.username === req.body.content.username) { throw new Error(`Can't delete the active user`); }
-					else if (!userList.includes(req.body.content.username)) { throw new Error(`Username '${req.body.content.username}' doesn't exist`); }
-					else if (userListDeleted.includes(req.body.content.username)) { throw new Error(`Username '${req.body.content.username}' already (soft)deleted`); }
-					result = await db.dataDelete(req.body.content.username);
+					if (!userList.includes(content.username)) { throw new Error(`Username '${content.username}' doesn't exist`); }
+					else if (username === content.username) { throw new Error(`Can't delete the active user`); }
+					else if (userListDeleted.includes(content.username)) { throw new Error(`Username '${content.username}' already (soft)deleted`); }
+					result = await db.dataDelete(content.username);
 					listUpdate();
 				}
 				res.json({ success: true, data: result });
@@ -167,16 +180,17 @@ async function startServer(){
 
 		app.post("/restore", async (req, res) => {
 			try {
-				if (!authCheck(req.body.username, req.body.password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
-				if (req.body.tablename) {
-					let tablename = req.body.tablename.startsWith("deleted_") ? req.body.tablename : `deleted_${req.body.tablename}`;
-					if (!tableList.includes(tablename)) { throw new Error(`Table '${req.body.tablename}' doesn't exist`); }
+				const { username, password, content, tablename } = req.body; // Deconstruct req.body contents
+				if (!authCheck(username, password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				if (tablename) {
+					if (!tableList.includes(tablename)) { throw new Error(`Table '${tablename}' doesn't exist`); }
+					let tablename = tablename.startsWith("deleted_") ? tablename : `deleted_${tablename}`;
 					result = await db.tableRestore(tablename);
 					tableList = await db.getTableData();
 				} else {
-					if (!userList.includes(req.body.content.username)) { throw new Error(`Username '${req.body.content.username}' doesn't exist`); }
-					else if (!userListDeleted.includes(req.body.content.username)) { throw new Error(`Username '${req.body.content.username}' already restored`); }
-					result = await db.dataRestore(req.body.username);
+					if (!userList.includes(content.username)) { throw new Error(`Username '${content.username}' doesn't exist`); }
+					else if (!userListDeleted.includes(content.username)) { throw new Error(`Username '${content.username}' already restored`); }
+					result = await db.dataRestore(username);
 					listUpdate();
 				}
 				res.json({ success: true, data: result });
@@ -185,14 +199,15 @@ async function startServer(){
 
 		app.post("/drop", async (req, res) => {
 			try {
-				if (!authCheck(req.body.username, req.body.password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
-				if (req.body.tablename) {
-					if (!tableList.includes(req.body.tablename)) { throw new Error(`Table '${req.body.tablename}' doesn't exist`); }
-					result = await db.tableDrop(req.body.tablename);
+				const { username, password, content, tablename } = req.body; // Deconstruct req.body contents
+				if (!authCheck(username, password)) { res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				if (tablename) {
+					if (!tableList.includes(tablename)) { throw new Error(`Table '${tablename}' doesn't exist`); }
+					result = await db.tableDrop(tablename);
 					tableList = await db.getTableData();
 				} else {
-					if (!userList.includes(req.body.content.username)) { throw new Error(`Username '${req.body.content.username}' doesn't exist`); }
-					result = await db.dataDrop(req.body.content.username);
+					if (!userList.includes(content.username)) { throw new Error(`Username '${content.username}' doesn't exist`); }
+					result = await db.dataDrop(content.username);
 					listUpdate();
 				}
 				res.json({ success: true, data: result });

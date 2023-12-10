@@ -4,8 +4,7 @@ const { spawn } = require('child_process'); // Required to spawn a test instance
 const request = require('supertest'); // Used to send http requests to the spawned instance
 const path = require('path'); // Allow accessing files relative to the current directory
 
-// Access parameters in the config.ini file
-require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') });
+require('dotenv').config({ path: path.resolve(__dirname, '../config.ini') }); // Access parameters in the config.ini file
 const serverPort = process.env.SERVER_PORT;
 
 let serverProcess;
@@ -13,14 +12,11 @@ let serverProcess;
 async function startServer() {
 	const serverPath = path.resolve(__dirname, '../server.js');
 
-	// Spawn the process
-	serverProcess = spawn('node', [serverPath]);
-
-	// Use a promise to wait for the server to start
-	await new Promise((resolve) => {
+	serverProcess = spawn('node', [serverPath]); // Spawn the process
+	await new Promise((resolve) => { // Use a promise to wait for the server to start
 		serverProcess.stdout.on('data', (data) => {
 			console.log(`Process Output: ${data}`);
-			if (data.includes('Now listening on port')) { setTimeout(resolve, 100); } // Wait 1s to ensure proper startup
+			if (data.includes('Now listening on port')) { setTimeout(resolve, 500); } // Wait 0.5s to ensure proper startup
 		});
 	});
 

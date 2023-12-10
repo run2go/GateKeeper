@@ -12,8 +12,9 @@ Security measures along with CRUD database access.
 | Function | Description |
 | ------ | ------ |
 | Authentication | Make use of access tokens |
-| GET | Retrieve single table rows or full tables |
-| POST | Insert/Update a new table row or create a new table |
+| CREATE | Insert a new table row or create a new table |
+| READ | Retrieve single table rows or full tables |
+| UPDATE | Update a table row or a full table |
 | DELETE | (Soft) Delete specified table rows or disable a full table |
 | RESTORE | Restore specified table rows or a full table |
 | DROP | (Hard) Delete specified table rows or drop a full table |

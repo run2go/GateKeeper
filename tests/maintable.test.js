@@ -34,7 +34,7 @@ async function stopServer() {
 	});
 }
 
-describe('Server Test - GET', () => {
+describe('Test Suite - GET', () => {
     beforeAll(startServer);
 
     test('Test 1: Check response', async () => {
@@ -50,7 +50,7 @@ describe('Server Test - GET', () => {
     afterAll(stopServer);
 });
 
-describe('Server Test - POST', () => {
+describe('Test Suite - User Management - POST', () => {
     beforeAll(startServer);
 	
 	const makePostRequest = async (endpoint, payload) => {

@@ -20,9 +20,7 @@ async function startServer() {
 	await new Promise((resolve) => {
 		serverProcess.stdout.on('data', (data) => {
 			console.log(`Process Output: ${data}`);
-			if (data.includes('Now listening on port')) {
-				setTimeout(resolve, 500); // Wait 0.5s to ensure proper startup
-			}
+			if (data.includes('Now listening on port')) { setTimeout(resolve, 500); } // Wait 0.5s to ensure proper startup
 		});
 	});
 
@@ -40,87 +38,78 @@ async function stopServer() {
 	});
 }
 
-describe('Server Test - POST', () => {
-	beforeAll(async () => {  await startServer(); });
-
-	// Helper function to make a POST request with a given payload
-	const makePostRequest = async (payload) => {
-		return await request(`http://127.0.0.1:${serverPort}`)
-			.post(apiEndpoint)
-			.send(payload);
+describe('Test Suite - Dynamic Table - POST', () => {
+	beforeAll(startServer);
+	
+	const makePostRequest = async (endpoint, payload) => {
+		return await request(`http://127.0.0.1:${serverPort}`).post(endpoint).send(payload);
 	};
-
-    test('Test case 1: List tables command', async () => {
-        const listResponse = await makePostRequest({
-            username: 'test_admin',
-            password: 'test_pass',
-            cmd: 'listtables',
+    const executeTest = async (description, endpoint, payload, expectation) => {
+        test(description, async () => {
+            const response = await makePostRequest(endpoint, payload);
+			if (expectation) { expect(response.body.success).toBeTruthy(); }
+			 else if (!expectation) { expect(response.body.success).toBeFalsy(); }
+            console.log(`${description} response:`, response.body);
         });
-        expect(listResponse.body.success).toBeTruthy();
-		console.log('list command response:', listResponse.body);
-	});
+    };
 
-    test('Test case 2: Create table', async () => {
-        const createUserResponse = await makePostRequest({
-            username: "test_admin",
-            password: "test_pass",
-            create: {
-                tablename: "test_table",
-                data: [
-                    { name: "id", type: "INTEGER", options: ["PRIMARY KEY"] },
-                    { name: "text", type: "VARCHAR(255)", value: "test string" }
-                ]
-            }
-        });
-        expect(createUserResponse.body.success).toBeTruthy();
-		console.log('create user response:', createUserResponse.body);
-	});
+	const testCases = [
+		{ description: "Test 1: List tables", 	    endpoint: "/cmd", 		expectation: true,	payload: { username: "test_admin", password: "test_pass", content: "tables" } },
+		{ description: "Test 2: Create table", 	    endpoint: "/create", 	expectation: true,	payload: {
+            "username": "test_admin",
+            "password": "test_pass",
+            "tablename": "new_table",
+            "content": [
+              { "name": "id", "type": "INTEGER", "options": ["PRIMARY KEY"] },
+              { "name": "text", "type": "VARCHAR(255)", "value": "test string" }
+            ]
+        } },
+		{ description: "Test 4: Read full table", 	endpoint: "/read", 		expectation: true,	payload: {
+            "username": "test_admin",
+            "password": "test_pass",
+            "tablename": "new_table"
+        }},
+		{ description: "Test 5: Read table row", 	endpoint: "/read", 		expectation: true,	payload: {
+            "username": "test_admin",
+            "password": "test_pass",
+            "tablename": "new_table",
+            "content": { "id": "0" }
+        }},
+		{ description: "Test 6: Update table", 	    endpoint: "/update", 	expectation: true,	payload: {
+            "username": "test_admin",
+            "password": "test_pass",
+            "tablename": "new_table",
+            "content": [
+                { "name": "text", "value": "updated string" },
+                { "name": "extra_column", "type": "VARCHAR(255)", "value": "extra data" }
+            ]
+        }},
+		{ description: "Test 7: Delete table row",  endpoint: "/delete", 	expectation: true,	payload: {
+            "username": "test_admin",
+            "password": "test_pass",
+            "tablename": "new_table",
+            "content": { "id": "1" }
+        }},
+		{ description: "Test 7: Delete full table", endpoint: "/delete", 	expectation: true,	payload: {
+            "username": "test_admin",
+            "password": "test_pass",
+            "tablename": "new_table"
+        }},
+		{ description: "Test 8: Restore table", 	endpoint: "/restore",	expectation: true,	payload: {
+            "username": "test_admin",
+            "password": "test_pass",
+            "tablename": "new_table"
+        }},
+		{ description: "Test 9: Drop table", 	    endpoint: "/drop", 		expectation: true,	payload: {
+            "username": "test_admin",
+            "password": "test_pass",
+            "tablename": "new_table"
+        }},
+	];
 
-    test('Test case 3: Read table', async () => {
-        const readUserResponse = await makePostRequest({
-            username: 'test_admin',
-            password: 'test_pass',
-            read: { tablename: 'test_table' },
-        });
-        expect(readUserResponse.body.success).toBeTruthy();
-		console.log('read user response:', readUserResponse.body);
-	});
+	testCases.forEach(({ description, endpoint, payload, expectation }) => {
+			executeTest(description, endpoint, payload, expectation);
+		});
 
-    test('Test case 4: Update table data', async () => {
-        const updateUserResponse = await makePostRequest({
-            username: "test_admin",
-            password: "test_pass",
-            create: {
-                tablename: "test_table",
-                data: [
-                    { name: "id", value: 26 },
-                    { name: "text", value: "VARCHAR(255)" }
-                ]
-            }
-        });
-        expect(updateUserResponse.body.success).toBeTruthy();
-		console.log('update table response:', updateUserResponse.body);
-	});
-
-    test('Test case 5: Delete table', async () => {
-        const deleteUserResponse = await makePostRequest({
-            username: 'test_admin',
-            password: 'test_pass',
-            delete: { tablename: 'test_table' },
-        });
-        expect(deleteUserResponse.body.success).toBeTruthy();
-		console.log('delete table response:', deleteUserResponse.body);
-	});
-
-    test('Test case 6: Drop a soft-deleted user', async () => {
-		const dropUserResponse = await makePostRequest({
-            username: 'test_admin',
-            password: 'test_pass',
-            drop: { tablename: 'test_table' },
-        });
-        expect(dropUserResponse.body.success).toBeTruthy();
-		console.log('drop deleted table response:', dropUserResponse.body);
-	});
-
-    afterAll(async () => { await stopServer(); });
+    afterAll(stopServer);
 });

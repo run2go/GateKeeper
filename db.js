@@ -9,10 +9,9 @@ const dbDatabase = process.env.DB_DATABASE;
 const dbDialect = process.env.DB_DIALECT;
 const dbStorage = process.env.DB_STORAGE;
 const dbMaintable = process.env.DB_MAINTABLE;
+const printQueriesEnabled = (process.env.PRINT_QUERIES === "true");
 
-const console = require('./utility'); // Use the timestamp methods inside the utility.js file
-
-const bcrypt = require('bcrypt'); // Make us of BCRYPT for password hashing & checking
+const console = require('./log.js'); // Use the logging functions inside the log.js file
 
 const { Sequelize, DataTypes } = require('sequelize'); // Import Sequelize and the Sequelize model for the "users" table
 const sequelize = new Sequelize({ // Create sequelize instance using the config.ini parameters
@@ -24,14 +23,14 @@ const sequelize = new Sequelize({ // Create sequelize instance using the config.
     dialect: dbDialect,
     storage: dbStorage,
     pool: {
-      max: 10,
-      min: 0,
-      acquire: 30000,
-      idle: 10000,
+		max: 10,
+		min: 0,
+		acquire: 30000,
+		idle: 10000,
     },
     timestamps: true,
     paranoid: true,
-    logging: (msg) => console.log(`[SQL] ${msg}`),
+    logging: ((printQueriesEnabled) ? (msg) => console.log(`[SQL] ${msg}`) : false),
 });
 sequelize.sync().catch((error) => { console.error(`Sequelize synchronization error: ${error.message}`); }); // Global error handler for Sequelize
 
@@ -75,38 +74,21 @@ const maintable = sequelize.define(dbMaintable, { // Define the "maintable" mode
 
 sequelize.sync(); // Sync the model with the database (create or update table)
 
-async function authCheck(providedUser, providedPass) { // Function to authenticate provided usernames using bcrypt to compare password hashes
-    try {
-        const user = await maintable.findOne({
-            where: {
-                username: providedUser,
-            },
-        });
+async function getUserData() { // Fetch userdata from the maintable
+	try {
+		const users = await maintable.findAll();
 
-        let storedPass;
-		if (user) { storedPass = user.password }
-		else { throw new Error(`Missing user: ${error.message}`); }
-
-		return (providedPass === storedPass);
-    }
-    catch (error) { throw new Error(`Authenticating: ${error.message}`); }
+		return users.map((user) => ({ // Map users to include "username," "password," and "admin" information
+			username: user.username,
+			password: user.password,
+			admin: user.admin,
+			deleted: user.deletedAt
+		}));
+	}
+	catch (error) { throw new Error(`Error fetching userlist: ${error.message}`); }
 }
 
-async function getUserData() { // Function to fetch userdata from the maintable
-  try {
-    const users = await maintable.findAll();
-
-    return users.map((user) => ({ // Map users to include "username," "password," and "admin" information
-      username: user.username,
-      password: user.password,
-      admin: user.admin,
-	  deleted: user.deletedAt
-    }));
-  }
-  catch (error) { throw new Error(`Error fetching userlist: ${error.message}`); }
-}
-
-async function getTableData() { // Function to list all existing table names
+async function getTableData() { // List all existing table names
     try {
         let query;
 
@@ -121,280 +103,333 @@ async function getTableData() { // Function to list all existing table names
     catch (error) { throw new Error(`Error fetching table list: ${error.message}`); }
 }
 
-/* Maintable Operations */
-async function dataCreate(username, password, isAdmin = false) { // Function to CREATE user entry
+async function rawQuery(query) { // Execute raw SQL queries
     try {
-        const result = await sequelize.transaction(async (t) => {
-            const [user, created] = await maintable.findOrCreate({
-                where: {
-                    username: username,
-                    deletedAt: null,
-                },
-                defaults: {
-                    password: password,
-                    admin: isAdmin,
-                },
-                transaction: t,
-            });
-
-            if (!created) { // If not created, update the existing user's password and admin status
-                user.password = password;
-                user.admin = isAdmin;
-                await user.save({ transaction: t });
-            }
-
-            return user;
-        });
+        const result = await sequelize.query(query, { type: Sequelize.QueryTypes.SELECT });
         return result;
-    } catch (error) { throw new Error(`Error creating user '${username}': ${error.message}`); }
+    }
+    catch (error) { throw new Error(`Error processing raw SQL: ${error.message}`); }
 }
 
-async function dataRead(username) { // Function to READ user data by username
+async function handleUser(action, username, password, isAdmin = false) { // User Management
     try {
-        const result = await sequelize.transaction(async (t) => {
-            const user = await maintable.findOne({
-                where: {
-                    username: username,
-                    deletedAt: null,
-                },
-                transaction: t,
-            });
+        const bcrypt = require('bcrypt');
+        const datetime = new Date();
+        let result;
 
-            if (!user) { throw new Error(`User with username '${username}' not found.`); }
-
-            return user;
-        });
-        return result;
-    } catch (error) { throw new Error(`Error reading data for username '${username}': ${error.message}`); }
-}
-
-async function dataUpdate(username, password, isAdmin = false) { // Function to UPDATE or create user data
-    try {
-        const result = await sequelize.transaction(async (t) => {
-            const user = await maintable.findOne({
-                where: {
-                    username: username,
-                    deletedAt: null,
-                },
-                transaction: t,
-                defaults: {
-                    password: password,
-                    admin: isAdmin,
-                },
-            });
-
-            if (user) {
-                // User found, update the password and admin status
-                user.password = password;
-                user.admin = isAdmin;
-                await user.save({ transaction: t }); // Save the changes to the database
-            }
-
-            return user;
-        });
-        return result;
-    } catch (error) { throw new Error(`Error updating data for username '${username}': ${error.message}`); }
-}
-
-async function dataDelete(username) { // Function to DELETE user data by username (soft delete)
-    try {
-        const result = await sequelize.transaction(async (t) => {
-            const user = await maintable.findOne({
-                where: {
-                    username: username,
-                    deletedAt: null,
-                },
-                transaction: t,
-            });
-
-            if (user) {
-                // Soft delete by setting the current date to the deletedAt data field
-                user.deletedAt = new Date();
-                await user.save({ transaction: t });
-            }
-
-            return user;
-        });
-        return result;
-    } catch (error) { throw new Error(`Error removing data for username '${username}': ${error.message}`); }
-}
-
-async function dataRestore(username) { // Function to RESTORE user data by username that has been (soft) deleted
-    try {
-        const result = await sequelize.transaction(async (t) => {
-            const user = await maintable.findOne({
-                where: {
-                    username: username,
-                },
-                transaction: t,
-            });
-
-            if (user) { // Reset the deletedAt data field
-                user.deletedAt = null;
-                await user.save({ transaction: t });
-            }
-
-            return user;
-        });
-        return result;
-    } catch (error) { throw new Error(`Error restoring data for username '${username}': ${error.message}`); }
-}
-
-async function dataDrop(username) { // Function to DROP user data by username (hard delete)
-    try {
-        const result = await sequelize.transaction(async (t) => {
-            const user = await maintable.findOne({
-                where: {
-                    username: username,
-                },
-                transaction: t,
-            });
-
-            if (!user) { throw new Error(`User with username '${username}' not found.`); }
-
-            await maintable.destroy({
-                where: {
-                    username: username,
-                },
-                transaction: t,
-            });
-
-            return user;
-        });
-        return result;
-    } catch (error) { throw new Error(`Error removing data for username '${username}': ${error.message}`); }
-}
-
-/* Table Operations */
-async function tableCreate(tablename, tabledata) { // Function to CREATE a new table
-    try {
-        const result = await sequelize.transaction(async (t) => {
-            if (tablename === dbMaintable) { throw new Error(`${dbMaintable} is protected`); }
-			else if (tablename.startsWith("deleted_")) { throw new Error(`Invalid table name: ${tablename}`); }
-			else if (!tabledata) { throw new Error(`Invalid table data provided`); }
-
-			tabledata.deletedAt = {  // Add the deletedAt column to support soft deleting
-				type: DataTypes.DATE,
-				allowNull: true,
-			};
-            const { content } = tabledata;
-            const dynamicModel = sequelize.define(tablename, tabledata);
-            await dynamicModel.sync({ alter: true, transaction: t });
-
-            return { success: true, message: `Table '${tablename}' created and data inserted successfully` };
-        });
-        return result;
-    } catch (error) { throw new Error(`Error creating table: ${error.message}`); }
-}
-
-
-async function tableRead(tablename, id = false) { // Function to READ a specific row or a whole table
-    try {
-        const result = await sequelize.transaction(async (t) => {
-            if (tablename === dbMaintable) { throw new Error(`'${dbMaintable}' is protected`); }
-            if (tablename.startsWith("deleted_")) { throw new Error(`Invalid table name: ${tablename}`); }
-
-            let query = `SELECT * FROM ${tablename}${id ? ' WHERE id = ' + id : ''}`; // Create query to print either a single row or a whole table
-
-            const result = await sequelize.query(query, { type: Sequelize.QueryTypes.SELECT, transaction: t });
-            return { success: true, data: result };
-        });
-        return result;
-    } catch (error) { throw new Error(`Error reading table: ${error.message}`); }
-}
-
-async function tableUpdate(tablename, id, newData) { // Function to UPDATE an existing table or add new columns
-    try {
-        const result = await sequelize.transaction(async (t) => {
-            if (tablename === dbMaintable) { throw new Error(`'${dbMaintable}' is protected`); }
-            if (tablename.startsWith("deleted_")) { throw new Error(`Invalid table name: ${tablename}`); }
-
-            const updateQuery = `UPDATE ${tablename} SET name = :name WHERE id = :id`; // Construct the UPDATE query based on the provided data
-            const [updatedRows] = await sequelize.query(updateQuery, { // Execute the UPDATE query with the provided parameters
-                replacements: { id: id, name: newData.name },
-                type: Sequelize.QueryTypes.UPDATE,
-                transaction: t,
-            });
-
-            if (updatedRows > 0) { return { success: true, message: `ID ${id} in table ${tablename} updated successfully` }; }
-			else { return { success: false, message: `No rows updated. Row with ID ${id} not found in table ${tablename}` }; }
-        });
-        return result;
-    } catch (error) { throw new Error(`Error updating table: ${error.message}`); }
-}
-
-async function tableDelete(tablename, id = false) { // Function to DELETE a row from a table or soft deleting a whole table
-    try {
-        const result = await sequelize.transaction(async (t) => {
-            if (tablename === dbMaintable) { throw new Error(`'${dbMaintable}' is protected`); }
-
-            if (id) {
-                const deleteQuery = `DELETE FROM ${tablename} WHERE id = ${id}`; // If row is provided, delete the specific row
-                const [deletedRows] = await sequelize.query(deleteQuery, {
-                    replacements: { id: id },
-                    type: Sequelize.QueryTypes.DELETE,
-                    transaction: t,
+        switch (action) {
+            case 'create':
+                if (userList.includes(username)) { throw new Error(`User '${username}' already exists`); }
+                const hash = await bcrypt.hash(password, 10);
+                result = await sequelize.transaction(async (t) => {
+                    const user = await maintable.create(
+                        { username: username, password: hash, admin: isAdmin, createdAt: datetime, updatedAt: datetime },
+                        { transaction: t });
+                    await userListUpdate();
+                    return `User '${username}' created at '${datetime.toISOString()}'`;
                 });
+                break;
 
-                if (deletedRows > 0) { return { success: true, message: `Row ${id} deleted successfully from table ${tablename}` };
-                } else { return { success: false, message: `No rows deleted. Row with id ${row} not found in table ${tablename}` }; }
-            } else {
-                const newTablename = `deleted_${tablename}`; // If row is not provided, rename the table with a prefix "deleted_"
-                const renameQuery = `ALTER TABLE ${tablename} RENAME TO ${newTablename}`; // Construct the RENAME TABLE query
-                await sequelize.query(renameQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
+            case 'read':
+                result = await sequelize.transaction(async (t) => {
+                    const user = await maintable.findOne(
+                        { where: { username: username }, transaction: t });
+                    return user;
+                });
+                break;
 
-                return { success: true, message: `Table '${tablename}' soft deleted` };
-            }
-        });
+            case 'update':
+				if (!userList.includes(username)) { throw new Error(`User '${username}' not found`); }
+                const hashUpdate = password ? await bcrypt.hash(password, 10) : null;
+                result = await sequelize.transaction(async (t) => {
+                    let values = { admin: isAdmin, updatedAt: datetime };
+                    if (password) { values.password = hashUpdate; }
+                    const user = await maintable.update(
+                        values,
+                        { where: { username: username }, transaction: t });
+                    await userListUpdate();
+                    return `User '${username}' updated at '${datetime.toISOString()}'`;
+                });
+                break;
+
+            case 'delete':
+				if (!userList.includes(username)) { throw new Error(`User '${username}' not found`); }
+				if (userListDeleted.includes(username)) { throw new Error(`User '${username}' already deleted`); }
+                result = await sequelize.transaction(async (t) => {
+                    const user = await maintable.update(
+                        { deletedAt: datetime },
+                        { where: { username: username }, transaction: t });
+                    await userListUpdate();
+                    return `User '${username}' deleted at '${datetime.toISOString()}'`;
+                });
+                break;
+
+            case 'restore':
+                    if (!userListDeleted.includes(username)) { throw new Error(`User '${username}' not found in deleted users`); }
+                result = await sequelize.transaction(async (t) => {
+                    const user = await maintable.update(
+                        { updatedAt: datetime, deletedAt: null },
+                        { where: { username: username }, transaction: t });
+                    await userListUpdate();
+                    return `User '${username}' restored at '${datetime.toISOString()}'`;
+                });
+                break;
+
+            case 'drop':
+				if (!userList.includes(username)) { throw new Error(`User '${username}' not found`); }
+                result = await sequelize.transaction(async (t) => {
+                    await maintable.destroy(
+                        { where: { username: username }, transaction: t });
+                    await userListUpdate();
+                    return `User '${username}' dropped at '${datetime.toISOString()}'`;
+                });
+                break;
+
+            default: throw new Error('Invalid action');
+        }
+
         return result;
-    } catch (error) { throw new Error(`Error deleting or renaming table: ${error.message}`); }
+    } catch (error) { throw new Error(`Error handling user data: ${error.message}`); }
 }
 
-async function tableRestore(tablename) { // Function to RESTORE a soft-deleted table by removing the "deleted_" prefix
+async function handleTable(action, table, data) { // Table Management
     try {
-        const result = await sequelize.transaction(async (t) => {
-            const originalTablename = tablename.replace(/^deleted_/i, ''); // Remove the "deleted_" prefix to get the original table name
-            const originalTableExists = await sequelize.getQueryInterface().showAllTables().then(tables => tables.includes(originalTablename)); // Check if the original table exists
+        const datetime = new Date();
+        let result;
+		
+        switch (action) {
+            case 'create':
+				if (tableList.includes(table)) { throw new Error(`Table '${table}' already exists`); }
+                else if (table.startsWith("deleted_")) { throw new Error(`Table name '${table}' is invalid`); }
+                const createResult = await sequelize.transaction(async (t) => {
+                    const dynamicModel = sequelize.define(table, data, { tableName: table });
+                    await dynamicModel.sync({ alter: true, transaction: t });
+                    await tableListUpdate();
 
-            if (originalTableExists) { throw new Error(`Table '${originalTablename}' already exists. Cannot restore the soft-deleted table.`); } // Handle the case when a to-be-restored table already exists
+                    return { success: true, message: `Table '${table}' created and data inserted at ${datetime}` };
+                });
+                return createResult;
 
-            const renameQuery = `ALTER TABLE ${tablename} RENAME TO ${originalTablename}`; // Rename the soft-deleted table to the original table name
-            await sequelize.query(renameQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
+            case 'read':
+                const readResult = await sequelize.transaction(async (t) => {
+                    const dynamicModel = sequelize.define(table, {});
+                    await dynamicModel.sync({ transaction: t });
 
-            return { success: true, message: `Table '${tablename}' restored as ${originalTablename}` };
-        });
+                    const rows = await dynamicModel.findAll({ transaction: t });
+                    return { success: true, data: rows };
+                });
+                return readResult;
+
+            case 'update':
+				if (!tableList.includes(table)) { throw new Error(`Table '${table}' not found`); }
+                const updateResult = await sequelize.transaction(async (t) => {
+                    const dynamicModel = sequelize.define(table, data, { tableName: table });
+                    await dynamicModel.sync({ alter: true, transaction: t });
+
+                    return { success: true, message: `Table '${table}' updated successfully` };
+                });
+                return updateResult;
+
+            case 'delete':
+				if (!tableList.includes(table)) { throw new Error(`Table '${table}' not found`); }
+                const deleteResult = await sequelize.transaction(async (t) => {
+                    const newTablename = `deleted_${table}`;
+                    const renameQuery = `ALTER TABLE ${table} RENAME TO ${newTablename}`;
+                    await sequelize.query(renameQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
+                    await tableListUpdate();
+
+                    return { success: true, message: `Table '${table}' soft deleted` };
+                });
+                return deleteResult;
+
+            case 'restore':
+				if (!tableList.includes(table)) { throw new Error(`Table '${table}' not found`); }
+                const restoreResult = await sequelize.transaction(async (t) => {
+                    const originalTablename = table.replace(/^deleted_/i, '');
+                    const originalTableExists = await sequelize.getQueryInterface().showAllTables().then(tables => tables.includes(originalTablename));
+
+                    if (originalTableExists) { throw new Error(`Table '${originalTablename}' already exists. Cannot restore the soft-deleted table.`); }
+
+                    const renameQuery = `ALTER TABLE ${table} RENAME TO ${originalTablename}`;
+                    await sequelize.query(renameQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
+                    await tableListUpdate();
+
+                    return { success: true, message: `Table '${table}' restored as ${originalTablename}` };
+                });
+                return restoreResult;
+
+            case 'drop':
+				if (!tableList.includes(table)) { throw new Error(`Table '${table}' not found`); }
+                const dropResult = await sequelize.transaction(async (t) => {
+                    let dropQuery = `DROP TABLE IF EXISTS ${table}`;
+                    await sequelize.query(dropQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
+                    await tableListUpdate();
+
+                    return { success: true, message: `Table '${table}' dropped successfully` };
+                });
+                return dropResult;
+
+            default: throw new Error('Invalid action');
+        }
+		
         return result;
-    } catch (error) { throw new Error(`Error restoring table: ${error.message}`); }
+    } catch (error) { throw new Error(`Error handling table: ${error.message}`); }
 }
 
-async function tableDrop(tablename) { // Function to DROP a table
+async function handleData(action, tablename, tabledata, id = false) { // Handle Table Data
     try {
-        const result = await sequelize.transaction(async (t) => {
-            let dropQuery = `DROP TABLE IF EXISTS ${tablename}`;
-            await sequelize.query(dropQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
+        const datetime = new Date();
+        let result;
+		
+        switch (action) {
+            case 'create':
+                const createResult = await sequelize.transaction(async (t) => {
+                    if (tablename === dbMaintable) {
+                        throw new Error(`${dbMaintable} is protected`);
+                    } else if (tablename.startsWith("deleted_")) {
+                        throw new Error(`Invalid table name: ${tablename}`);
+                    } else if (!tabledata) {
+                        throw new Error(`Invalid table data provided`);
+                    }
 
-            return { success: true, message: `Table '${tablename}' dropped successfully` };
-        });
-        return result;
-    } catch (error) { throw new Error(`Error dropping table: ${error.message}`); }
+                    tabledata.deletedAt = {
+                        type: DataTypes.DATE,
+                        allowNull: true,
+                    };
+                    const { content } = tabledata;
+                    const dynamicModel = sequelize.define(tablename, tabledata, { tableName: tablename, });
+                    await dynamicModel.sync({ alter: true, transaction: t });
+
+                    return { success: true, message: `Table '${tablename}' created and data inserted successfully` };
+                });
+                return createResult;
+
+            case 'read':
+                const readResult = await sequelize.transaction(async (t) => {
+                    if (tablename === dbMaintable) {
+                        throw new Error(`'${dbMaintable}' is protected`);
+                    }
+                    if (tablename.startsWith("deleted_")) {
+                        throw new Error(`Invalid table name: ${tablename}`);
+                    }
+
+                    const Model = sequelize.define(tablename, {});
+                    await Model.sync({ transaction: t });
+
+                    if (id) {
+                        const row = await Model.findByPk(id, { transaction: t });
+                        if (!row) {
+                            throw new Error(`Row with ID ${id} not found in table '${tablename}'`);
+                        }
+                        return { success: true, data: row };
+                    } else {
+                        const rows = await Model.findAll({ transaction: t });
+                        return { success: true, data: rows };
+                    }
+                });
+                return readResult;
+
+            case 'update':
+                const updateResult = await sequelize.transaction(async (t) => {
+                    if (tablename === dbMaintable) {
+                        throw new Error(`'${dbMaintable}' is protected`);
+                    }
+                    if (tablename.startsWith("deleted_")) {
+                        throw new Error(`Invalid table name: ${tablename}`);
+                    }
+
+                    const { content } = tabledata;
+                    const dynamicModel = sequelize.define(tablename, tabledata, { tableName: tablename, });
+                    await dynamicModel.sync({ alter: true, transaction: t });
+
+                    if (!dynamicModel) {
+                        throw new Error(`Model for table '${tablename}' not found`);
+                    }
+
+                    const [updatedRows] = await dynamicModel.update(tabledata, {
+                        where: { id },
+                        returning: true,
+                        transaction: t,
+                    });
+
+                    if (updatedRows > 0) {
+                        return { success: true, message: `Row with ID '${id}' in table '${tablename}' updated successfully` };
+                    } else {
+                        return {
+                            success: false,
+                            message: `No rows updated. Row with ID ${id} not found in table '${tablename}'`,
+                        };
+                    }
+                });
+                return updateResult;
+
+            case 'delete':
+                const deleteResult = await sequelize.transaction(async (t) => {
+                    if (tablename === dbMaintable) {
+                        throw new Error(`'${dbMaintable}' is protected`);
+                    }
+
+                    if (id) {
+                        const deleteQuery = `DELETE FROM ${tablename} WHERE id = ${id}`;
+                        const [deletedRows] = await sequelize.query(deleteQuery, {
+                            replacements: { id: id },
+                            type: Sequelize.QueryTypes.DELETE,
+                            transaction: t,
+                        });
+
+                        if (deletedRows > 0) {
+                            return { success: true, message: `Row ${id} deleted successfully from table ${tablename}` };
+                        } else {
+                            return { success: false, message: `No rows deleted. Row with id ${row} not found in table ${tablename}` };
+                        }
+                    } else {
+                        const newTablename = `deleted_${tablename}`;
+                        const renameQuery = `ALTER TABLE ${tablename} RENAME TO ${newTablename}`;
+                        await sequelize.query(renameQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
+
+                        return { success: true, message: `Table '${tablename}' soft deleted` };
+                    }
+                });
+                return deleteResult;
+
+            case 'restore':
+                const restoreResult = await sequelize.transaction(async (t) => {
+                    const originalTablename = tablename.replace(/^deleted_/i, '');
+                    const originalTableExists = await sequelize.getQueryInterface().showAllTables().then(tables => tables.includes(originalTablename));
+
+                    if (originalTableExists) {
+                        throw new Error(`Table '${originalTablename}' already exists. Cannot restore the soft-deleted table.`);
+                    }
+
+                    const renameQuery = `ALTER TABLE ${tablename} RENAME TO ${originalTablename}`;
+                    await sequelize.query(renameQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
+
+                    return { success: true, message: `Table '${tablename}' restored as ${originalTablename}` };
+                });
+                return restoreResult;
+
+            case 'drop':
+                const dropResult = await sequelize.transaction(async (t) => {
+                    let dropQuery = `DROP TABLE IF EXISTS ${tablename}`;
+                    await sequelize.query(dropQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
+
+                    return { success: true, message: `Table '${tablename}' dropped successfully` };
+                });
+                return dropResult;
+
+            default: throw new Error('Invalid action');
+        }
+		
+		return result;
+    } catch (error) { throw new Error(`Error handling data: ${error.message}`); }
 }
 
-module.exports = { // Export the functions for use in other modules
-	authCheck,
-    getUserData,
-    getTableData,
+module.exports = {
+	getUserData,
+	getTableData,
 	
-	dataCreate,
-    dataRead,
-    dataUpdate,
-    dataDelete,
-    dataRestore,
-	dataDrop,
-
-    tableCreate,
-    tableRead,
-    tableUpdate,
-    tableDelete,
-    tableRestore,
-    tableDrop,
+	rawQuery,
+	handleUser,
+	handleTable,
+	handleData,
 };

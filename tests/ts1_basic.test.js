@@ -32,21 +32,17 @@ async function stopServer() {
 }
 
 const makePostRequest = async (endpoint, payload, auth) => {
-  const requestObject = request(`http://127.0.0.1:${serverPort}`).post(endpoint).send({ data: payload });
-
-  if (auth) {
-    const base64Credentials = Buffer.from(`${auth.user}:${auth.pass}`).toString('base64');
+	const requestObject = request(`http://127.0.0.1:${serverPort}`).post(endpoint).send({ data: payload });
+	const base64Credentials = Buffer.from(`${auth.user}:${auth.pass}`).toString('base64');
     requestObject.set('Authorization', `Basic ${base64Credentials}`);
-  }
-
-  return await requestObject;
+	return await requestObject;
 };
 
-const executeTest = async (description, endpoint, payload, expectation) => {
+const executeTest = async (description, endpoint, expectation, payload, auth) => {
 	test(description, async () => {
-		const response = await makePostRequest(endpoint, payload);
-		if (expectation === true) { expect(response.body.success).toBeTruthy(); }
-		else if (expectation === false) { expect(response.body.success).toBeFalsy(); }
+		const response = await makePostRequest(endpoint, payload, auth);
+		if (expectation) { expect(response.body.success).toBeTruthy(); }
+		else if (!expectation) { expect(response.body.success).toBeFalsy(); }
 		console.log(`${description} response:`, response.body);
 	});
 };
@@ -66,14 +62,14 @@ describe('Test Suite A - GET - Routing Checks', () => {
     afterAll(stopServer);
 });
 
-describe('Test Suite B - POST - Command Checks', () => {
+describe('Test Suite B - POST - Command & Query Checks', () => {
     beforeAll(startServer);
 	
 	const testCases = [
 		{ description: "Test 1: CMD Token Access", endpoint: "/cmd", expectation: false, payload: "help", auth: { user: "token", pass: "test_token" } },  
-		{ description: "Test 2: CMD User Access", endpoint: "/cmd", expectation: true, payload: "tables", auth: { user: "test_admin", pass: "test_pass" } },
-		{ description: "Test 2: CMD Admin Access", endpoint: "/cmd", expectation: true, payload: "admins", auth: { user: "test_user", pass: "test_pass" } },
-		{ description: "Test 3: QUERY Raw SQL", endpoint: "/query", expectation: true, payload: `SELECT * FROM ${dbMaintable}`, auth: { user: "token", pass: "test_token" } },
+		{ description: "Test 2: CMD User Access", endpoint: "/cmd", expectation: false, payload: "tables", auth: { user: "test_user", pass: "test_pass" } },
+		{ description: "Test 3: CMD Admin Access", endpoint: "/cmd", expectation: true, payload: "admins", auth: { user: "test_admin", pass: "test_pass" } },
+		{ description: "Test 4: QUERY Raw SQL", endpoint: "/query", expectation: true, payload: `SELECT * FROM ${dbMaintable}`, auth: { user: "test_admin", pass: "test_token" } },
 	];
 	testCases.forEach((params) => { executeTest(...Object.values(params)); });
 	

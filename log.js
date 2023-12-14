@@ -28,48 +28,36 @@ const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
 const originalConsoleDebug = console.debug;
 
-// Adjust the default log() function, add a timestamp & enable logging
+// Override the default console logging functions
 function log(...args) {
 	const formattedDate = getTimestamp();
     const logMessage = `[${formattedDate}] ${args[0]} ${args.slice(1).join(' ')}`;
 
-    // Append the log message to the console
     originalConsoleLog(logMessage);
-
     if (loggingEnabled) { fs.appendFileSync(logFilePath, logMessage + '\n'); }
 }
-
-// Adjust the default warn() function, add a timestamp & enable logging
 function warn(...args) {
 	const formattedDate = getTimestamp();
     const warnMessage = `[${formattedDate}] ${args[0]} ${args.slice(1).join(' ')}`;
 
-    // Append the warn message to the console
     originalConsoleWarn(warnMessage);
-
     if (loggingEnabled) { fs.appendFileSync(logFilePath, warnMessage + '\n'); }
 }
-
-// Adjust the default error() function, add a timestamp & enable logging
 function error(...args) {
 	const formattedDate = getTimestamp();
     const errorMessage = `[${formattedDate}] ${args[0]} ${args.slice(1).join(' ')}`;
 
-    // Append the error message to the console
     originalConsoleError(errorMessage);
-
     if (loggingEnabled) { fs.appendFileSync(logFilePath, errorMessage + '\n'); }
 }
-
-// Adjust the default debug() function, add a timestamp & enable logging
 function debug(...args) {
 	const formattedDate = getTimestamp();
-    const debugMessage = `[${formattedDate}] ${args[0]} ${args.slice(1).join(' ')}`;
+    const debugMessage = `[${formattedDate}] [DEBUG] ${args[0]} ${args.slice(1).join(' ')}`;
 
-    // Append the debug message to the console
-	originalConsoleDebug(debugEnabled ? `[DEBUG] ${debugMessage}` : debugMessage);
-
-    if (loggingEnabled) { fs.appendFileSync(logFilePath, debugMessage + '\n'); }
+	if (debugEnabled) {
+		originalConsoleDebug(debugMessage);
+		if (loggingEnabled) { fs.appendFileSync(logFilePath, debugMessage + '\n'); }
+	}
 }
 
 module.exports = {

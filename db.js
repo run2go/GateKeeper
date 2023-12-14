@@ -93,11 +93,10 @@ async function getTableData() { // List all existing table names
         let query;
 
         if (dbDialect === 'sqlite') { query = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'deleted_%'"; } // SQLite-specific table list query
-        else { query = "SHOW TABLES LIKE 'deleted_%'"; } // Default SQL query
+        else { query = "SHOW TABLES"; } // Default SQL query
 
         const result = await sequelize.query(query, { type: Sequelize.QueryTypes.SELECT }); // Execute the query
         const tables = result.map((row) => (dbDialect === 'sqlite' ? row.name : row[`Tables_in_${dbDatabase}`])); // Extract table names from the result
-
         return tables;
     }
     catch (error) { throw new Error(`Error fetching table list: ${error.message}`); }
@@ -114,283 +113,153 @@ async function rawQuery(query) { // Execute raw SQL queries
 async function handleUser(action, user, pass, isAdmin = false) { // User Management
     try {
         const bcrypt = require('bcrypt');
-		const util = require('./util.js');
+        const util = require('./util.js');
         const datetime = new Date();
 
-        switch (action) {
-            case 'create':
-                if (util.getUserList().includes(user)) { throw new Error(`User '${user}' already exists`); }
-                const hash = await bcrypt.hash(pass, 10);
-                const createResult = await sequelize.transaction(async (t) => {
+        const transactionResult = await sequelize.transaction(async (t) => {
+            switch (action) {
+                case 'create':
+                    if (util.getUserList().includes(user)) { throw new Error(`User '${user}' already exists`); }
+                    const hash = await bcrypt.hash(pass, 10);
                     const createUser = await maintable.create(
                         { username: user, password: hash, admin: isAdmin, createdAt: datetime, updatedAt: datetime },
                         { transaction: t });
                     return `User '${user}' created at '${console.getTimestamp()}'`;
-                });
-				await util.updateUserList();
-                return createResult;
 
-            case 'read':
-                const readResult = await sequelize.transaction(async (t) => {
+                case 'read':
                     const readUser = await maintable.findOne(
                         { where: { username: user }, transaction: t });
                     return readUser.toJSON();
-				});
-				return readResult;
 
-            case 'update':
-				if (!util.getUserList().includes(user)) { throw new Error(`User '${user}' not found`); }
-                const hashUpdate = pass ? await bcrypt.hash(pass, 10) : null;
-                const updateResult = await sequelize.transaction(async (t) => {
+                case 'update':
+                    if (!util.getUserList().includes(user)) { throw new Error(`User '${user}' not found`); }
+                    else if (util.getUserListDeleted().includes(user)) { throw new Error(`User '${user}' is a deleted user`); }
+                    const hashUpdate = pass ? await bcrypt.hash(pass, 10) : null;
                     let values = { admin: isAdmin, updatedAt: datetime };
                     if (pass) { values.password = hashUpdate; }
                     const updateUser = await maintable.update(
                         values,
                         { where: { username: user }, transaction: t });
                     return `User '${user}' updated at '${console.getTimestamp()}'`;
-                });
-				await util.updateUserList();
-                return updateResult;
 
-            case 'delete':
-				if (!util.getUserList().includes(user)) { throw new Error(`User '${user}' not found`); }
-				if (util.getUserListDeleted().includes(user)) { throw new Error(`User '${user}' already deleted`); }
-                const deleteResult = await sequelize.transaction(async (t) => {
+                case 'delete':
+                    if (!util.getUserList().includes(user)) { throw new Error(`User '${user}' not found`); }
+                    if (util.getUserListDeleted().includes(user)) { throw new Error(`User '${user}' already deleted`); }
                     const deleteUser = await maintable.update(
                         { deletedAt: datetime },
                         { where: { username: user }, transaction: t });
                     return `User '${user}' deleted at '${console.getTimestamp()}'`;
-                });
-				await util.updateUserList();
-                return deleteResult;
 
-            case 'restore':
-				if (!util.getUserListDeleted().includes(user)) { throw new Error(`User '${user}' not found in deleted users`); }
-                const restoreResult = await sequelize.transaction(async (t) => {
+                case 'restore':
+                    if (!util.getUserListDeleted().includes(user)) { throw new Error(`User '${user}' not found in deleted users`); }
                     const restoreUser = await maintable.update(
                         { updatedAt: datetime, deletedAt: null },
                         { where: { username: user }, transaction: t });
                     return `User '${user}' restored at '${console.getTimestamp()}'`;
-                });
-				await util.updateUserList();
-                return restoreResult;
 
-            case 'drop':
-				if (!util.getUserList().includes(user)) { throw new Error(`User '${user}' doesn't exist`); }
-                const dropResult = await sequelize.transaction(async (t) => {
+                case 'drop':
+                    if (!util.getUserList().includes(user)) { throw new Error(`User '${user}' doesn't exist`); }
                     await maintable.destroy(
                         { where: { username: user }, transaction: t });
                     return `User '${user}' dropped at '${console.getTimestamp()}'`;
-                });
-				await util.updateUserList();
-                return dropResult;
 
-            default: throw new Error('Invalid action');
-        }
+                default: throw new Error('Invalid action');
+            }
+        });
+
+		await util.updateUserList();
+        return transactionResult;
 
     } catch (error) { throw new Error(error.message); }
 }
 
-async function handleTable(action, table, data) { // Table Management
+async function handleTable(action, table, data) {
     try {
-		const util = require('./util.js');
+		if (table && table === dbMaintable) { throw new Error (`Table '${table}' is protected`); }
         const datetime = new Date();
+        const util = require('./util.js');
 		
-        switch (action) {
-            case 'create':
-				if (util.getTableList().includes(table)) { throw new Error(`Table '${table}' already exists`); }
-                else if (table.startsWith("deleted_")) { throw new Error(`Table name '${table}' is invalid`); }
-                const createResult = await sequelize.transaction(async (t) => {
-                    const dynamicModel = sequelize.define(table, data, { tableName: table });
-                    await dynamicModel.sync({ alter: true, transaction: t });
+        const transactionResult = await sequelize.transaction(async (t) => {
+			let model = sequelize.models[table];
+			if (!model && data) {
+				model = sequelize.define(table, data, { tableName: table });
+				await model.sync({ transaction: t });
+			}
 
-                    return `Table '${table}' created at ${console.getTimestamp()}`;
-                });
-				await util.updateTableList();
-                return createResult;
+			switch (action) {
+				case '/create':
+                    if (!data) { throw new Error(`Missing 'Data'`); }
+					else if (util.getTableList().includes(table)) { throw new Error(`Table '${table}' already exists`); }
+					model = sequelize.define(table, { ...data, deletedAt: { type: DataTypes.DATE, allowNull: true } }, { tableName: table, paranoid: true, });
+					await model.sync({ alter: true, transaction: t });
+                    await model.create(data, { transaction: t });
+					return `Table '${table}' created at '${console.getTimestamp()}'`;
 
-            case 'read':
-				if (!util.getTableList().includes(table)) { throw new Error(`Table '${table}' not found`); }
-                const readResult = await sequelize.transaction(async (t) => {
-                    const dynamicModel = sequelize.define(table, {});
-                    await dynamicModel.sync({ transaction: t });
+				case '/read':
+					if (!util.getTableList().includes(table)) { throw new Error(`Table '${table}' doesn't exist`); }
+					else if (!data) {
+                        const readTable = await model.findAll({ transaction: t });
+                        return readTable.map(row => row.toJSON());
+					} else {
+						const readData = await model.findAll({ where: data, transaction: t });
+						return readData.map(row => row.toJSON());
+                    }
+		  
+                case '/add':
+                    if (!data) { throw new Error(`Missing 'Data'`); }
+					else if (!util.getTableList().includes(table)) { throw new Error(`Table '${table}' doesn't exist`) }
+					await model.sync({ alter: true, transaction: t });
+                    await model.create(data, { transaction: t });
+                    return `Data added to table '${table}' at '${console.getTimestamp()}'`;
 
-                    const rows = await dynamicModel.findAll({ transaction: t });
-                    return rows;
-                });
-                return readResult;
+                case '/set':
+                    if (!data) { throw new Error(`Missing 'Data'`); }
+					else if (!util.getTableList().includes(table)) { throw new Error(`Table '${table}' doesn't exist`) }
+					await model.sync({ alter: true, transaction: t });
+                    await model.update(data, { where: data, transaction: t });
+                    return `Data updated in table '${table}' at '${console.getTimestamp()}'`;
 
-            case 'update':
-				if (!util.getTableList().includes(table)) { throw new Error(`Table '${table}' not found`); }
-                const updateResult = await sequelize.transaction(async (t) => {
-                    const dynamicModel = sequelize.define(table, data, { tableName: table });
-                    await dynamicModel.sync({ alter: true, transaction: t });
-
-                    return `Table '${table}' updated at ${console.getTimestamp()}`;
-                });
-				await util.updateTableList();
-                return updateResult;
-
-            case 'delete':
-				if (!util.getTableList().includes(table)) { throw new Error(`Table '${table}' not found`); }
-                const deleteResult = await sequelize.transaction(async (t) => {
-                    const newTablename = `deleted_${table}`;
-                    const renameQuery = `ALTER TABLE ${table} RENAME TO ${newtable}`;
-                    await sequelize.query(renameQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
-
-                    return `Table '${table}' soft deleted at ${console.getTimestamp()}`;
-                });
-				await util.updateTableList();
-                return deleteResult;
-
-            case 'restore':
-				if (!util.getTableList().includes(table)) { throw new Error(`Table '${table}' not found`); }
-                const restoreResult = await sequelize.transaction(async (t) => {
-                    const originalTablename = table.replace(/^deleted_/i, '');
-                    const originalTableExists = await sequelize.getQueryInterface().showAllTables().then(tables => tables.includes(originalTablename));
-                    if (originalTableExists) { throw new Error(`Table '${originaltable}' already exists. Cannot restore the soft-deleted table.`); }
-
-                    const renameQuery = `ALTER TABLE ${table} RENAME TO ${originaltable}`;
-                    await sequelize.query(renameQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
-
-                    return `Table '${table}' restored as ${originaltable} at ${console.getTimestamp()}`;
-                });
-				await util.updateTableList();
-                return restoreResult;
-
-            case 'drop':
-				if (!util.getTableList().includes(table)) { throw new Error(`Table '${table}' not found`); }
-                const dropResult = await sequelize.transaction(async (t) => {
-                    let dropQuery = `DROP TABLE IF EXISTS ${table}`;
-                    await sequelize.query(dropQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
-
-                    return `Table '${table}' dropped at ${console.getTimestamp()}`;
-                });
-				await util.updateTableList();
-                return dropResult;
-
-            default: throw new Error('Invalid action');
-        }
-		
-    } catch (error) { throw new Error(error.message); }
-}
-
-async function handleData(action, table, data, id = false) { // Handle Table Data
-    try {
-        const datetime = new Date();
-        let result;
-		if (tablename === dbMaintable) { throw new Error(`'${dbMaintable}' is protected`); }
-        
-		switch (action) {
-            case 'create':
-                const createResult = await sequelize.transaction(async (t) => {
-					if (table.startsWith("deleted_")) { throw new Error(`Invalid table name: ${table}`); }
-					else if (!tabledata) { throw new Error(`Invalid table data provided`); }
-
-                    data.deletedAt = {
-                        type: DataTypes.DATE,
-                        allowNull: true,
-                    };
-                    const { content } = tabledata;
-                    const dynamicModel = sequelize.define(table, data, { tableName: table, });
-                    await dynamicModel.sync({ alter: true, transaction: t });
-
-                    return `Table '${table}' created and data inserted successfully`;
-                });
-                return createResult;
-
-            case 'read':
-                const readResult = await sequelize.transaction(async (t) => {
-                    if (table.startsWith("deleted_")) { throw new Error(`Invalid table name: ${table}`); }
-
-                    const dynamicModel = sequelize.define(table, {});
-                    await dynamicModel.sync({ transaction: t });
-
-                    if (id) {
-                        const row = await dynamicModel.findByPk(id, { transaction: t });
-                        if (!row) {
-                            throw new Error(`Row with ID ${id} not found in table '${table}'`);
-                        }
-                        return { success: true, data: row };
+                case '/delete':
+					if (!util.getTableList().includes(table)) { throw new Error(`Table '${table}' doesn't exist`) }
+					else if (util.getTableListDeleted().includes(table)) { throw new Error(`Table '${table}' already deleted`) }
+                    else if (!data) {
+                        const deletedTableName = `deleted_${table}`;
+                        await sequelize.query(`ALTER TABLE "${table}" RENAME TO "${deletedTableName}"`, { transaction: t });
+                        return `Table '${table}' renamed to '${deletedTableName}' at '${console.getTimestamp()}'`;
                     } else {
-                        const rows = await dynamicModel.findAll({ transaction: t });
-                        return rows;
+						await model.update({ deletedAt: datetime }, { where: data, transaction: t });
+                        return `Data deleted from table '${table}' at '${console.getTimestamp()}'`;
                     }
-                });
-                return readResult;
 
-            case 'update':
-                const updateResult = await sequelize.transaction(async (t) => {
-                    if (table.startsWith("deleted_")) { throw new Error(`Invalid table name: ${table}`); }
-
-                    const { content } = tabledata;
-                    const dynamicModel = sequelize.define(table, data, { tableName: table, });
-                    await dynamicModel.sync({ alter: true, transaction: t });
-
-                    if (!dynamicModel) { throw new Error(`Model for table '${table}' not found`); }
-
-                    const [updatedRows] = await dynamicModel.update(data, {
-                        where: { id },
-                        returning: true,
-                        transaction: t,
-                    });
-
-                    if (updatedRows > 0) { return `Row with ID '${id}' in table '${table}' updated successfully`; }
-					throw new Error(`No rows updated. Row with ID ${id} not found in table '${table}'`);
-                });
-                return updateResult;
-
-            case 'delete':
-                const deleteResult = await sequelize.transaction(async (t) => {
-                    if (id) {
-                        const deleteQuery = `DELETE FROM ${table} WHERE id = ${id}`;
-                        const [deletedRows] = await sequelize.query(deleteQuery, {
-                            replacements: { id: id },
-                            type: Sequelize.QueryTypes.DELETE,
-                            transaction: t,
-                        });
-
-                        if (deletedRows > 0) { return `Row ${id} deleted successfully from table ${table}`; } 
-						throw new Error(`No rows deleted. Row with id ${row} not found in table ${table}`);
+                case '/restore':
+					if (!util.getTableList().includes(table)) { throw new Error(`Table '${table}' doesn't exist`) }
+					else if (!util.getTableListDeleted().includes(table)) { throw new Error(`Table '${table}' already restored`) }
+                    else if (!data) {
+                        const deletedTableName = `deleted_${table}`;
+                        await sequelize.query(`ALTER TABLE "${deletedTableName}" RENAME TO "${table}"`, { transaction: t });
+                        return `Table '${deletedTableName}' restored to '${table}' at '${console.getTimestamp()}'`;
                     } else {
-                        const newTablename = `deleted_${table}`;
-                        const renameQuery = `ALTER TABLE ${table} RENAME TO ${newtable}`;
-                        await sequelize.query(renameQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
-
-                        return `Table '${table}' soft deleted`;
-                    }
-                });
-                return deleteResult;
-
-            case 'restore':
-                const restoreResult = await sequelize.transaction(async (t) => {
-                    const originalTablename = table.replace(/^deleted_/i, '');
-                    const originalTableExists = await sequelize.getQueryInterface().showAllTables().then(tables => tables.includes(originalTablename));
-
-                    if (originalTableExists) {
-                        throw new Error(`Table '${originaltable}' already exists. Cannot restore the soft-deleted table.`);
+                        await model.update({ deletedAt: null }, { where: data, transaction: t });
+                        return `Data restored in table '${table}' at '${console.getTimestamp()}'`;
                     }
 
-                    const renameQuery = `ALTER TABLE ${table} RENAME TO ${originaltable}`;
-                    await sequelize.query(renameQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
+                case '/drop':
+					if (!util.getTableList().includes(table)) { throw new Error(`Table '${table}' doesn't exist`) }
+                    else if (!data) {
+                        await model.drop({ transaction: t });
+                        return `Table '${table}' dropped at '${console.getTimestamp()}'`;
+                    } else {
+                        await model.destroy({ where: data, transaction: t });
+                        return `Data deleted from table '${table}' at '${console.getTimestamp()}'`;
+                    }
 
-                    return `Table '${table}' restored as ${originaltable}`;
-                });
-                return restoreResult;
-
-            case 'drop':
-                const dropResult = await sequelize.transaction(async (t) => {
-                    let dropQuery = `DROP TABLE IF EXISTS ${table}`;
-                    await sequelize.query(dropQuery, { type: Sequelize.QueryTypes.RAW, transaction: t });
-
-                    return `Table '${table}' dropped successfully`;
-                });
-                return dropResult;
-
-            default: throw new Error('Invalid action');
-        }
+                default: throw new Error(`Bad Request`);
+            }
+		});
 		
-		return result;
+		await util.updateTableList();
+        return transactionResult;
+
     } catch (error) { throw new Error(error.message); }
 }
 
@@ -400,5 +269,4 @@ module.exports = {
 	rawQuery,
 	handleUser,
 	handleTable,
-	handleData,
 };

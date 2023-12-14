@@ -9,7 +9,7 @@ const dbPassword = process.env.DB_PASSWORD;
 
 const db = require('./db.js'); // Require the db.js file to access user & list data
 
-let userData, userList, userListActive, userListDeleted, userListAdmin, tableList, tokenList;
+let userData, userList, userListActive, userListDeleted, userListAdmin, tableList, tableListActive, tableListDeleted, tokenList;
 
 async function initAdmin() { if (userListAdmin.length === 0) { await db.handleUser("create", dbUsername, dbPassword, true); } } // Add db admin user if adminlist is empty
 async function updateAll() { await updateUserList(); await updateTableList(); updateTokenList(); } // Update all lists
@@ -21,7 +21,11 @@ async function updateUserList() {
 	userListDeleted = userData.filter((u) => u.deleted !== null).map((u) => u.username);
 	userListAdmin = userData.filter((u) => u.admin === true).map((u) => u.username);
 }
-async function updateTableList() { tableList = await db.getTableData(); }
+async function updateTableList() {
+	tableList = await db.getTableData();
+	tableListActive = tableList.filter(tableName => !tableName.startsWith('deleted_'));
+	tableListDeleted = tableList.filter(tableName => tableName.startsWith('deleted_'));
+}
 function updateTokenList() {
 	if (tokensEnabled) {
 		const fs = require('fs');
@@ -36,11 +40,14 @@ function getUserList() { return userList; }
 function getUserListActive() { return userListActive; }
 function getUserListDeleted() { return userListDeleted; }
 function getUserListAdmin() { return userListAdmin; }
+
 function getTableList() { return tableList; }
+function getTableListActive() { return tableListActive; }
+function getTableListDeleted() { return tableListDeleted; }
 function getTokenList() { return tokenList; }
 
 function getHeaderData(header) {
-	if (header.startsWith('Basic ')) {
+	if (header && header.startsWith('Basic ')) {
 		const base64Credentials = header.slice('Basic '.length); // Extract the base64-encoded credentials (excluding the 'Basic ' prefix)
 		const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8'); // Decode the base64 string to a UTF-8 string
 		[user, pass] = credentials.split(':'); // Split the username and password using the colon as a delimiter
@@ -51,8 +58,8 @@ function getHeaderData(header) {
 async function authCheck(user, pass) {
 	const bcrypt = require('bcrypt'); // Make use of BCRYPT for password hashing & checking
 	if (user === "token") {  return !!tokenList.includes(pass); } // Single token authentication
-	else { return !!userData.find(async (u) => u.username === user && u.password === pass); } // Username & password authentication
-	//else { return !!userData.find(async (u) => u.username === user && await bcrypt.compare(u.password, pass)); } // Username & password authentication
+	else { return !!userData.find(async (u) => u.username === user && u.password === pass && u.deletedAt === null ); } // Username & password authentication
+	//else { return !!userData.find(async (u) => u.username === user && u.deletedAt === null && await bcrypt.compare(u.password, pass)); } // Username & password authentication
 }
 
 function printLists() { return `Lists:\nUsers: ${userList}\nActive Users: ${userListActive}\nDeleted Users: ${userListDeleted}\nAdmins: ${userListAdmin}\nTables: ${tableList}`; }
@@ -61,24 +68,22 @@ module.exports = {
 	updateUserList,
 	updateTableList,
 	updateTokenList,
+	
 	getUserData,
 	getUserList,
 	getUserListActive,
 	getUserListDeleted,
 	getUserListAdmin,
+	
 	getTableList,
+	getTableListActive,
+	getTableListDeleted,
+	
 	getTokenList,
 	getHeaderData,
-	authCheck,
-
-	printLists,
-	userData,
-	userList,
-	userListActive,
-	userListDeleted,
-	userListAdmin,
-	tableList,
 	
+	authCheck,
+	printLists,
 	updateAll,
 	initAdmin,
 };

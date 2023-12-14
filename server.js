@@ -42,18 +42,21 @@ async function serverStart() {
 				const { user, pass, admin, table, data } = req.body; // Deconstruct request body
 				const path = req.path;
 				
-				if (!util.authCheck(userHeader, passHeader)) { console.debug(`Response Code 401:\nUnauthorized`); res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				if (!util.authCheck(userHeader, passHeader)) { handleError(res, 401, false, 'Unauthorized'); }
 				else if (path.startsWith("/cmd") && isAdmin) { result = await urlCmd( data ); } // CMD Handling
 				else if (path.startsWith("/query") && isAdmin) { result = await db.rawQuery( data ); } // Raw SQL Queries
 				else if (path.startsWith("/user/") && isAdmin) { result = await db.handleUser(path.slice("/user/".length), user, pass, admin); } // User Management
-				else if (path.startsWith("/table/")) { result = await db.handleTable(path.slice("/table/".length), table, data); } // Table Management
-				else if (path.startsWith("/data/")) { result = await db.handleData(path.slice("/data/".length), table, data); } // Table Data
-				else { throw new Error(`Bad Request`); }
+				else { result = await db.handleTable(path, table, data); } // Table & Data Management
 				
 				console.debug(`Response Code 200:\n${result}`);
 				res.json({ success: true, data: result });
-			} catch (error) { console.debug(`Response Code 400:\n${error.message}`); res.status(400).json({ success: false, error: error.message }); }
+			} catch (error) { handleError(res, 400, false, error.message); }
 		});
+
+		function handleError(res, statusCode, success, errorText) {
+			console.debug(`Response Code ${statusCode}:\n${errorText}`);
+			res.status(statusCode).json({ success, error: errorText });
+		}
 
 		function urlCmd(command) { // Handle API commands
 			switch (command) {
@@ -82,13 +85,8 @@ async function serverStart() {
 				default: console.log(`Unknown command`);
 			}
 		});
-	} catch (error) { console.error(`Runtime Error: ${error}`); } //error.message
+	} catch (error) { console.error(`[ERROR] ${error}`); } //error.message
 }
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
 
 process.on('SIGTERM', serverTerminate); // Handle shutdown signals
 process.on('SIGQUIT', serverShutdown);

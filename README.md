@@ -33,12 +33,12 @@ GateKeeper makes use of the following tools & software:
 
 Build command:
 ```sh
-docker build -t GateKeeper .
+docker build -t gatekeeper_image .
 ```
 
 Start command:
 ```sh
-docker run -d -it --name GateKeeper -p 80:8080 GateKeeper
+docker run -d -it --name GateKeeper -p 80:8080 gatekeeper_image start
 ```
 
 Container commands:

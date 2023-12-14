@@ -31,21 +31,17 @@ async function stopServer() {
 }
 
 const makePostRequest = async (endpoint, payload, auth) => {
-  const requestObject = request(`http://127.0.0.1:${serverPort}`).post(endpoint).send({ data: payload });
-
-  if (auth) {
-    const base64Credentials = Buffer.from(`${auth.user}:${auth.pass}`).toString('base64');
+	const requestObject = request(`http://127.0.0.1:${serverPort}`).post(endpoint).send( payload );
+	const base64Credentials = Buffer.from(`${auth.user}:${auth.pass}`).toString('base64');
     requestObject.set('Authorization', `Basic ${base64Credentials}`);
-  }
-
-  return await requestObject;
+	return await requestObject;
 };
 
-const executeTest = async (description, endpoint, payload, expectation) => {
+const executeTest = async (description, endpoint, expectation, payload, auth) => {
 	test(description, async () => {
-		const response = await makePostRequest(endpoint, payload);
-		if (expectation === true) { expect(response.body.success).toBeTruthy(); }
-		else if (expectation === false) { expect(response.body.success).toBeFalsy(); }
+		const response = await makePostRequest(endpoint, payload, auth);
+		if (expectation) { expect(response.body.success).toBeTruthy(); }
+		else if (!expectation) { expect(response.body.success).toBeFalsy(); }
 		console.log(`${description} response:`, response.body);
 	});
 };
@@ -54,15 +50,15 @@ describe('Test Suite - POST - User Management', () => {
     beforeAll(startServer);
 	
 	const testCases = [
-		{ description: "Test 1: CREATE user", 	endpoint: "/user/create", 	expectation: true,	payload: { username: "test_user", password: "test_pw" }, auth: { user: "token", pass: "test_token" } },
-		{ description: "Test 2: CREATE admin", 	endpoint: "/user/create", 	expectation: true,	payload: { username: "temp_admin", password: "test_pw" }, admin: true , auth: { user: "token", pass: "test_token" } },
-		{ description: "Test 3: READ user", 	endpoint: "/user/read", 	expectation: true,	payload: { username: "test_user" }, auth: { user: "token", pass: "test_token" } },
-		{ description: "Test 4: UPDATE user", 	endpoint: "/user/update", 	expectation: true,	payload: { username: "test_user", password: "new_password" }, auth: { user: "token", pass: "test_token" } },
-		{ description: "Test 5: DELETE user", 	endpoint: "/user/delete", 	expectation: true,	payload: { username: "test_user" }, auth: { user: "token", pass: "test_token" } },
-		{ description: "Test 6: RESTORE user", 	endpoint: "/user/restore",	expectation: true,	payload: { username: "test_user" }, auth: { user: "token", pass: "test_token" } },
-		{ description: "Test 7: DELETE self", 	endpoint: "/user/delete", 	expectation: false,	payload: { username: "test_admin" }, auth: { user: "token", pass: "test_token" } },
-		{ description: "Test 8: DROP user", 	endpoint: "/user/drop", 	expectation: true,	payload: { username: "test_user" }, auth: { user: "token", pass: "test_token" } },
-		{ description: "Test 9: DROP admin", 	endpoint: "/user/drop", 	expectation: true,	payload: { username: "temp_admin" }, auth: { user: "token", pass: "test_token" } },
+		{ description: "Test 1: CREATE user", 	endpoint: "/user/create", 	expectation: true,	payload: { user: "test_user", pass: "test_pw" }, auth: { user: "test_admin", pass: "test_pass" } },
+		{ description: "Test 2: CREATE admin", 	endpoint: "/user/create", 	expectation: true,	payload: { user: "temp_admin", pass: "test_pw", admin: true }, auth: { user: "test_admin", pass: "test_pass" } },
+		{ description: "Test 3: READ user", 	endpoint: "/user/read", 	expectation: true,	payload: { user: "test_user" }, auth: { user: "test_admin", pass: "test_pass" } },
+		{ description: "Test 4: UPDATE user", 	endpoint: "/user/update", 	expectation: true,	payload: { user: "test_user", pass: "new_password" }, auth: { user: "test_admin", pass: "test_pass" } },
+		{ description: "Test 5: DELETE user", 	endpoint: "/user/delete", 	expectation: true,	payload: { user: "test_user" }, auth: { user: "test_admin", pass: "test_pass" } },
+		{ description: "Test 6: RESTORE user", 	endpoint: "/user/restore",	expectation: true,	payload: { user: "test_user" }, auth: { user: "test_admin", pass: "test_pass" } },
+		{ description: "Test 7: DELETE self", 	endpoint: "/user/delete", 	expectation: false,	payload: { user: "test_admin" }, auth: { user: "test_admin", pass: "test_pass" } },
+		{ description: "Test 8: DROP user", 	endpoint: "/user/drop", 	expectation: true,	payload: { user: "test_user" }, auth: { user: "test_admin", pass: "test_pass" } },
+		{ description: "Test 9: DROP admin", 	endpoint: "/user/drop", 	expectation: true,	payload: { user: "temp_admin" }, auth: { user: "test_admin", pass: "test_pass" } },
 	];
 	testCases.forEach((params) => { executeTest(...Object.values(params)); });
 

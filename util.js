@@ -4,9 +4,25 @@
 require('dotenv').config({ path: 'config.ini' });
 const tokensEnabled = (process.env.TOKENS_ENABLED === "true");
 const tokensPath = process.env.TOKENS_PATH;
+const dbUsername = process.env.DB_USERNAME;
+const dbPassword = process.env.DB_PASSWORD;
 
-let tokenlist;
-function getTokenList() {
+const db = require('./db.js'); // Require the db.js file to access user & list data
+
+let userData, userList, userListActive, userListDeleted, userListAdmin, tableList, tokenList;
+
+async function initAdmin() { if (userListAdmin.length === 0) { await db.handleUser("create", dbUsername, dbPassword, true); } } // Add db admin user if adminlist is empty
+async function updateAll() { await updateUserList(); await updateTableList(); updateTokenList(); } // Update all lists
+
+async function updateUserList() {
+	userData = await db.getUserData();
+	userList = userData.map((u) => u.username);
+	userListActive = userData.filter((u) => u.deleted === null).map((u) => u.username);
+	userListDeleted = userData.filter((u) => u.deleted !== null).map((u) => u.username);
+	userListAdmin = userData.filter((u) => u.admin === true).map((u) => u.username);
+}
+async function updateTableList() { tableList = await db.getTableData(); }
+function updateTokenList() {
 	if (tokensEnabled) {
 		const fs = require('fs');
 		const fileContent = fs.readFileSync(tokensPath, 'utf-8');
@@ -14,8 +30,14 @@ function getTokenList() {
 		tokenList = receivedList;
 	} else { tokenList = ""; }
 }
-getTokenList();
 
+function getUserData() { return userData; }
+function getUserList() { return userList; }
+function getUserListActive() { return userListActive; }
+function getUserListDeleted() { return userListDeleted; }
+function getUserListAdmin() { return userListAdmin; }
+function getTableList() { return tableList; }
+function getTokenList() { return tokenList; }
 
 function getHeaderData(header) {
 	if (header.startsWith('Basic ')) {
@@ -32,11 +54,31 @@ async function authCheck(user, pass) {
 	else { return !!userData.find(async (u) => u.username === user && u.password === pass); } // Username & password authentication
 	//else { return !!userData.find(async (u) => u.username === user && await bcrypt.compare(u.password, pass)); } // Username & password authentication
 }
-function authCheckAdmin(user) { return !!userListAdmin.includes(user); }
+
+function printLists() { return `Lists:\nUsers: ${userList}\nActive Users: ${userListActive}\nDeleted Users: ${userListDeleted}\nAdmins: ${userListAdmin}\nTables: ${tableList}`; }
 
 module.exports = {
-	getTokenList,	
+	updateUserList,
+	updateTableList,
+	updateTokenList,
+	getUserData,
+	getUserList,
+	getUserListActive,
+	getUserListDeleted,
+	getUserListAdmin,
+	getTableList,
+	getTokenList,
 	getHeaderData,
 	authCheck,
-	authCheckAdmin,
+
+	printLists,
+	userData,
+	userList,
+	userListActive,
+	userListDeleted,
+	userListAdmin,
+	tableList,
+	
+	updateAll,
+	initAdmin,
 };

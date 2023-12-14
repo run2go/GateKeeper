@@ -7,9 +7,10 @@ const serverURL = process.env.SERVER_URL;
 const redirectURL = process.env.REDIRECT_URL;
 const helpURL = process.env.HELP_URL;
 
-const console = require('./log.js'); // Use the timestamp methods inside the util.js file
 
+const console = require('./log.js'); // Use the logging functionality inside the log.js file
 const express = require('express'); // Make use of the express.js framework for the core application
+
 const app = express();
 app.use(express.json()); // Middleware to parse JSON in request body
 
@@ -19,25 +20,13 @@ async function serverStart() {
 	try {
 		console.log(`${serverName} started`); // Notify that the server has been started
 		server = app.listen(serverPort, () => { console.log(`Now listening on port ${serverPort}`); }); // Bind the server to the specified port
-
-		const db = require('./db.js'); // Require the db.js file to access the sequelize functionality
-		let userData, userList, userListActive, userListDeleted, userListAdmin, tableList;
-		async function updateUserList() {
-			userData = await db.getUserData();
-			userList = userData.map((u) => u.username);
-			userListActive = userData.filter((u) => u.deleted === null).map((u) => u.username);
-			userListDeleted = userData.filter((u) => u.deleted !== null).map((u) => u.username);
-			userListAdmin = userData.filter((u) => u.admin === true).map((u) => u.username);
-		}
-		await updateUserList();
-
-		async function updateTableList() { tableList = await db.getTableData(); }
-		await updateTableList();
-			
-		if (userListAdmin.length === 0) { handleUser("create", dbUsername, dbPassword, true); } // Add db admin user if adminlist is empty
 		
-		console.debug(`userlist: ${userList}\nuserlistactive: ${userListActive}\nuserlistdeleted: ${userListDeleted}\nadminlist: ${userListAdmin}\ntablelist: ${tableList}`);
-
+		const db = require('./db.js'); // Require the db.js file to access the sequelize functionality
+		const util = require('./util.js'); // Use functions stored in the util.js file
+		await util.updateAll(); // Get List data
+		await util.initAdmin(); // Create admin account if missing
+		console.debug(util.printLists());
+		
 		let result;
 		
 		app.get("*", (req, res) => { // Forward GET requests to the specified redirectURL
@@ -48,16 +37,15 @@ async function serverStart() {
 		app.post("*", async (req, res) => { // Handle all POST requests
 			console.debug(`Request POST:\nParams:\n${JSON.stringify(req.params)}\nBody:\n${JSON.stringify(req.body)}`);
 			try {
-				const [ user, pass ] = getHeaderData(req.headers['authorization']) // Get authorization header data
-				const isAdmin = authCheckAdmin(user);
-				
-				const { username, password, admin, table, data } = req.body; // Deconstruct request body
+				const [ userHeader, passHeader ] = util.getHeaderData(req.headers['authorization']) // Get authorization header data
+				const isAdmin = !!util.getUserListAdmin().includes(userHeader); // Create a bool if the current user is an admin
+				const { user, pass, admin, table, data } = req.body; // Deconstruct request body
 				const path = req.path;
 				
-				if (!authCheck(user, pass)) { console.debug(`Response Code 401:\nUnauthorized`); res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
+				if (!util.authCheck(userHeader, passHeader)) { console.debug(`Response Code 401:\nUnauthorized`); res.status(401).json({ success: false, error: 'Unauthorized' }); return; }
 				else if (path.startsWith("/cmd") && isAdmin) { result = await urlCmd( data ); } // CMD Handling
 				else if (path.startsWith("/query") && isAdmin) { result = await db.rawQuery( data ); } // Raw SQL Queries
-				else if (path.startsWith("/user/") && isAdmin) { result = await db.handleUser(path.slice("/user/".length), username, password, admin); } // User Management
+				else if (path.startsWith("/user/") && isAdmin) { result = await db.handleUser(path.slice("/user/".length), user, pass, admin); } // User Management
 				else if (path.startsWith("/table/")) { result = await db.handleTable(path.slice("/table/".length), table, data); } // Table Management
 				else if (path.startsWith("/data/")) { result = await db.handleData(path.slice("/data/".length), table, data); } // Table Data
 				else { throw new Error(`Bad Request`); }
@@ -67,14 +55,13 @@ async function serverStart() {
 			} catch (error) { console.debug(`Response Code 400:\n${error.message}`); res.status(400).json({ success: false, error: error.message }); }
 		});
 
-		function urlCmd(cmd) { // Handle API commands
-			console.debug(cmd);
-			switch (cmd) {
+		function urlCmd(command) { // Handle API commands
+			switch (command) {
 				case "help": result = helpURL; break;
-				case "users": result = userList; break;
-				case "admins": result = userListAdmin; break;
-				case "tables": result = tableList; break;
-				case "reload": userListUpdate(); tableListUpdate(); result = `${serverName} reloaded`; break;
+				case "users": result = util.getUserList(); break;
+				case "admins": result = util.getUserListAdmin(); break;
+				case "tables": result = util.getTableList(); break;
+				case "reload": util.updateAll(); result = `${serverName} reloaded`; break;
 				case "restart": result = `${serverName} restarted`; serverRestart(); break;
 				case "stop": result = `${serverName} stopped`; setTimeout(() => { serverShutdown(); }, 10); break;
 				default: throw new Error('Invalid command');
@@ -88,8 +75,8 @@ async function serverStart() {
 			console.warn(`[CMD] ${text}`);
 			switch(text.trim()) {
 				case 'stop': serverShutdown(); break;
-				case 'print': console.log(`userlist: ${userList}\nuserlistactive: ${userListActive}\nuserlistdeleted: ${userListDeleted}\nadminlist: ${userListAdmin}\ntablelist: ${tableList}`); break;
-				case 'reload': userListUpdate(); tableUpdate(); console.log(`${serverName} reloaded`); break;
+				case 'print': console.log(util.printLists()); break;
+				case 'reload': util.updateUserList(); util.updateTableList(); console.log(`${serverName} reloaded`); break;
 				case 'restart': serverRestart(); break;
 				case 'help': console.log(helpURL); break;
 				default: console.log(`Unknown command`);
@@ -98,9 +85,13 @@ async function serverStart() {
 	} catch (error) { console.error(`Runtime Error: ${error}`); } //error.message
 }
 
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+
 process.on('SIGTERM', serverTerminate); // Handle shutdown signals
 process.on('SIGQUIT', serverShutdown);
-//process.on('SIGSTOP', serverShutdown);
 process.on('SIGINT', serverShutdown);
 
 function serverTerminate() {

@@ -42,20 +42,21 @@ async function serverStart() {
 				const { user, pass, admin, table, data } = req.body; // Deconstruct request body
 				const path = req.path;
 				
-				if (!util.authCheck(userHeader, passHeader)) { handleError(res, 401, false, 'Unauthorized'); }
+				if (!util.authCheck(userHeader, passHeader)) { handleResponse(res, 401, false, 'Unauthorized'); return; } // Validate the provided credentials
 				else if (path.startsWith("/cmd") && isAdmin) { result = await urlCmd( data ); } // CMD Handling
 				else if (path.startsWith("/query") && isAdmin) { result = await db.rawQuery( data ); } // Raw SQL Queries
 				else if (path.startsWith("/user/") && isAdmin) { result = await db.handleUser(path.slice("/user/".length), user, pass, admin, userHeader); } // User Management
-				else { result = await db.handleTable(path, table, data); } // Table & Data Management
+				else if (path.length > 1) { result = await db.handleTable(path, table, data); } // Table & Data Management
+				else { handleResponse(res, 404, false, 'Not Found'); return; }
 				
-				console.debug(`Response Code 200:\n${result}`);
-				res.json({ success: true, data: result });
-			} catch (error) { handleError(res, 400, false, error.message); }
+				handleResponse(res, 200, true, result);
+			} catch (error) { handleResponse(res, 400, false, error.message); }
 		});
 
-		function handleError(res, statusCode, success, errorText) {
-			console.debug(`Response Code ${statusCode}:\n${errorText}`);
-			res.status(statusCode).json({ success, error: errorText });
+		function handleResponse(res, statusCode, success, response) {
+			console.debug(`Response Code ${statusCode}:\n${response}`);
+			if (statusCode === 200) { res.status(200).json({ success, data: response }); }
+			else { res.status(statusCode).json({ success, error: response }); }
 		}
 
 		function urlCmd(command) { // Handle API commands

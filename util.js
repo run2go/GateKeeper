@@ -58,8 +58,7 @@ function getHeaderData(header) {
 async function authCheck(user, pass) {
 	const bcrypt = require('bcrypt'); // Make use of BCRYPT for password hashing & checking
 	if (user === "token") {  return !!tokenList.includes(pass); } // Single token authentication
-	else { return !!userData.find(async (u) => u.username === user && u.password === pass && u.deletedAt === null ); } // Username & password authentication
-	//else { return !!userData.find(async (u) => u.username === user && u.deletedAt === null && await bcrypt.compare(u.password, pass)); } // Username & password authentication
+	else { return !!userData.find(async (u) => u.username === user && u.deletedAt === null && await bcrypt.compare(u.password, pass)); } // Username & password authentication
 }
 
 function printLists() { return `Lists:\nUsers: ${userList}\nActive Users: ${userListActive}\nDeleted Users: ${userListDeleted}\nAdmins: ${userListAdmin}\nTables: ${tableList}`; }

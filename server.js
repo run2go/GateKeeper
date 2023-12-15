@@ -45,7 +45,7 @@ async function serverStart() {
 				if (!util.authCheck(userHeader, passHeader)) { handleError(res, 401, false, 'Unauthorized'); }
 				else if (path.startsWith("/cmd") && isAdmin) { result = await urlCmd( data ); } // CMD Handling
 				else if (path.startsWith("/query") && isAdmin) { result = await db.rawQuery( data ); } // Raw SQL Queries
-				else if (path.startsWith("/user/") && isAdmin) { result = await db.handleUser(path.slice("/user/".length), user, pass, admin); } // User Management
+				else if (path.startsWith("/user/") && isAdmin) { result = await db.handleUser(path.slice("/user/".length), user, pass, admin, userHeader); } // User Management
 				else { result = await db.handleTable(path, table, data); } // Table & Data Management
 				
 				console.debug(`Response Code 200:\n${result}`);

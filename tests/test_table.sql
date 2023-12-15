@@ -1,4 +1,4 @@
-CREATE TABLE maintable (
+CREATE TABLE test_table (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
@@ -7,4 +7,3 @@ CREATE TABLE maintable (
     updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
     deletedAt DATETIME
 );
-INSERT INTO maintable (username, password, admin) VALUES ('test_admin', 'test_pass', 1);

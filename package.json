@@ -8,7 +8,7 @@
     "test": "jest --detectOpenHandles"
   },
   "jest": {
-    "testTimeout": 10000
+    "testTimeout": 1000
   },
   "repository": {
     "type": "git",

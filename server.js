@@ -7,7 +7,6 @@ const serverURL = process.env.SERVER_URL;
 const redirectURL = process.env.REDIRECT_URL;
 const helpURL = process.env.HELP_URL;
 
-
 const console = require('./log.js'); // Use the logging functionality inside the log.js file
 const express = require('express'); // Make use of the express.js framework for the core application
 
@@ -27,17 +26,34 @@ async function serverStart() {
 		await util.initAdmin(); // Create admin account if missing
 		console.debug(util.printLists());
 		
+		function handleRequest(req) {
+			console.debug(`Request:\nHeader:\n${JSON.stringify(req.headers)}\nParams:\n${JSON.stringify(req.params)}\nBody:\n${JSON.stringify(req.body)}`);
+		}
+		
+		function handleResponse(req, res, type, statusCode, success, response) {
+			const ipHead = req.headers['x-forwarded-for'] || '';
+			const ipConn = req.connection.remoteAddress || '';
+			const authorization = req.headers['authorization'] || '';
+			const userAgent = req.headers['user-agent'] || '';
+			const contentType = req.headers['content-type'] || '';
+
+			console.log(`[IP] "${ipHead} - ${ipConn}" [TYPE] "${type}"${authorization ? ` [AUTH] "${authorization}"` : ''}${userAgent ? ` [USER-AGENT] "${userAgent}"` : ''}${contentType ? ` [CONTENT-TYPE] "${contentType}"` : ''} [STATUS] "${statusCode}"`);
+			console.debug(`Response Code ${statusCode}:\n${response}`);
+
+			if (res && statusCode === 200) { res.status(200).json({ success, data: response }); }
+			else if (res) { res.status(statusCode).json({ success, error: response }); }
+		}
+		
 		let result;
 		
-		function printRequest(req) { console.debug(`Request:\nHeader:\n${JSON.stringify(req.headers)}\nParams:\n${JSON.stringify(req.params)}\nBody:\n${JSON.stringify(req.body)}`); }
-		
 		app.get("*", (req, res) => { // Forward GET requests to the specified redirectURL
-			printRequest(req);
+			handleRequest(req);
+			handleResponse(req, null, "GET", 200, true, result);
 			res.redirect(redirectURL);
 		});
 
 		app.post("*", async (req, res) => { // Handle all POST requests
-			printRequest(req);
+			handleRequest(req);
 			try {
 				const [ userHeader, passHeader ] = util.getHeaderData(req.headers['authorization']) // Get authorization header data
 				const isAdmin = !!util.getUserListAdmin().includes(userHeader); // Create a bool if the current user is an admin
@@ -54,13 +70,6 @@ async function serverStart() {
 				handleResponse(req, res, "POST", 200, true, result);
 			} catch (error) { handleResponse(req, res, "POST", 400, false, error.message); }
 		});
-
-		function handleResponse(req, res, type, statusCode, success, response) {
-			console.log(`[IP] "${req.headers['x-forwarded-for']}" [TYPE] "${type}" [AUTH] "${req.headers['authorization']}" [USER-AGENT] "${req.headers['user-agent']}" [CONTENT-TYPE] "${req.headers['content-type']}" [STATUS] "${statusCode}"`);
-			console.debug(`Response Code ${statusCode}:\n${response}`);
-			if (statusCode === 200) { res.status(200).json({ success, data: response }); }
-			else { res.status(statusCode).json({ success, error: response }); }
-		}
 
 		function urlCmd(command) { // Handle API commands
 			switch (command) {

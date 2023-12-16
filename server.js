@@ -29,33 +29,37 @@ async function serverStart() {
 		
 		let result;
 		
+		function printRequest(req) { console.debug(`Request:\nHeader:\n${JSON.stringify(req.headers)}\nParams:\n${JSON.stringify(req.params)}\nBody:\n${JSON.stringify(req.body)}`); }
+		
 		app.get("*", (req, res) => { // Forward GET requests to the specified redirectURL
-			console.debug(`Request GET:\nParams:\n${JSON.stringify(req.params)}\nBody:\n${JSON.stringify(req.body)}`);
+			printRequest(req);
 			res.redirect(redirectURL);
 		});
 
 		app.post("*", async (req, res) => { // Handle all POST requests
-			console.debug(`Request POST:\nParams:\n${JSON.stringify(req.params)}\nBody:\n${JSON.stringify(req.body)}`);
+			printRequest(req);
 			try {
 				const [ userHeader, passHeader ] = util.getHeaderData(req.headers['authorization']) // Get authorization header data
 				const isAdmin = !!util.getUserListAdmin().includes(userHeader); // Create a bool if the current user is an admin
 				const { user, pass, admin, table, data } = req.body; // Deconstruct request body
 				const path = req.path;
 				
-				if (!util.authCheck(userHeader, passHeader)) { handleError(res, 401, false, 'Unauthorized'); }
+				if (!util.authCheck(userHeader, passHeader)) { handleResponse(req, res, "POST", 401, false, 'Unauthorized'); return; } // Validate the provided credentials
 				else if (path.startsWith("/cmd") && isAdmin) { result = await urlCmd( data ); } // CMD Handling
 				else if (path.startsWith("/query") && isAdmin) { result = await db.rawQuery( data ); } // Raw SQL Queries
 				else if (path.startsWith("/user/") && isAdmin) { result = await db.handleUser(path.slice("/user/".length), user, pass, admin, userHeader); } // User Management
-				else { result = await db.handleTable(path, table, data); } // Table & Data Management
+				else if (path.length > 1) { result = await db.handleTable(path, table, data); } // Table & Data Management
+				else { handleResponse(req, res, "POST", 404, false, 'Not Found'); return; }
 				
-				console.debug(`Response Code 200:\n${result}`);
-				res.json({ success: true, data: result });
-			} catch (error) { handleError(res, 400, false, error.message); }
+				handleResponse(req, res, "POST", 200, true, result);
+			} catch (error) { handleResponse(req, res, "POST", 400, false, error.message); }
 		});
 
-		function handleError(res, statusCode, success, errorText) {
-			console.debug(`Response Code ${statusCode}:\n${errorText}`);
-			res.status(statusCode).json({ success, error: errorText });
+		function handleResponse(req, res, type, statusCode, success, response) {
+			console.log(`[IP] "${req.headers['x-forwarded-for']}" [TYPE] "${type}" [AUTH] "${req.headers['authorization']}" [USER-AGENT] "${req.headers['user-agent']}" [CONTENT-TYPE] "${req.headers['content-type']}" [STATUS] "${statusCode}"`);
+			console.debug(`Response Code ${statusCode}:\n${response}`);
+			if (statusCode === 200) { res.status(200).json({ success, data: response }); }
+			else { res.status(statusCode).json({ success, error: response }); }
 		}
 
 		function urlCmd(command) { // Handle API commands

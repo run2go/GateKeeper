@@ -92,7 +92,7 @@ async function serverStart() {
 			switch(text.trim()) {
 				case 'stop': serverShutdown(); break;
 				case 'print': console.log(util.printLists()); break;
-				case 'reload': util.updateUserList(); util.updateTableList(); console.log(`${serverName} reloaded`); break;
+				case 'reload': util.updateAll(); console.log(`${serverName} reloaded`); break;
 				case 'restart': serverRestart(); break;
 				case 'help': console.log(helpURL); break;
 				default: console.log(`Unknown command`);

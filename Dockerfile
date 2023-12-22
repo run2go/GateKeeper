@@ -1,8 +1,16 @@
 FROM oven/bun:latest
+
+# Define work directory
 WORKDIR /app
+
+# Copy project files into the workdir
 COPY . .
 
+# Install the bun JavaScript Runtime Environment
 RUN bun install
+
+# Install the project dependencies
+RUN npm install
 
 # Copy the script for handling start/stop/restart commands
 COPY docker-entrypoint.sh /usr/src/app/docker-entrypoint.sh

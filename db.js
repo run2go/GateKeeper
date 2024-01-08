@@ -105,7 +105,7 @@ async function getTableData() { // List all existing table names
 async function rawQuery(query) { // Execute raw SQL queries
     try {
         const result = await sequelize.query(query, { type: Sequelize.QueryTypes.SELECT });
-        return result;
+        return [200, true, result];
     }
     catch (error) { throw new Error(`Error processing raw SQL: ${error.message}`); }
 }
@@ -124,13 +124,13 @@ async function handleUser(action, user, pass, isAdmin = false, userHeader) { // 
                     const createUser = await maintable.create(
                         { username: user, password: hash, admin: isAdmin, createdAt: datetime, updatedAt: datetime },
                         { transaction: t });
-                    return `User '${user}' created at '${console.getTimestamp()}'`;
+                    return [200, true, `User '${user}' created at '${console.getTimestamp()}'`];
 
                 case 'read':
                     if (!util.getUserList().includes(user)) { throw new Error(`User '${user}' not found`); }
                     const readUser = await maintable.findOne(
                         { where: { username: user }, transaction: t });
-                    return readUser.toJSON();
+                    return [200, true, readUser.toJSON()];
 
                 case 'update':
                     if (!util.getUserList().includes(user)) { throw new Error(`User '${user}' not found`); }
@@ -140,7 +140,7 @@ async function handleUser(action, user, pass, isAdmin = false, userHeader) { // 
                     const updateUser = await maintable.update(
                         values,
                         { where: { username: user }, transaction: t });
-                    return `User '${user}' updated at '${console.getTimestamp()}'`;
+                    return [200, true, `User '${user}' updated at '${console.getTimestamp()}'`];
 
                 case 'delete':
 					if (user === userHeader) { throw new Error(`Can't delete active user '${user}'`); }
@@ -149,21 +149,21 @@ async function handleUser(action, user, pass, isAdmin = false, userHeader) { // 
                     const deleteUser = await maintable.update(
                         { deletedAt: datetime },
                         { where: { username: user }, transaction: t });
-                    return `User '${user}' deleted at '${console.getTimestamp()}'`;
+                    return [200, true, `User '${user}' deleted at '${console.getTimestamp()}'`];
 
                 case 'restore':
 					if (!util.getUserListDeleted().includes(user)) { throw new Error(`User '${user}' not found in deleted users`); }
                     const restoreUser = await maintable.update(
                         { updatedAt: datetime, deletedAt: null },
                         { where: { username: user }, transaction: t });
-                    return `User '${user}' restored at '${console.getTimestamp()}'`;
+                    return [200, true, `User '${user}' restored at '${console.getTimestamp()}'`];
 
                 case 'drop':
 					if (user === userHeader) { throw new Error(`Can't drop active user '${user}'`); }
                     else if (!util.getUserList().includes(user)) { throw new Error(`User '${user}' doesn't exist`); }
                     await maintable.destroy(
                         { where: { username: user }, transaction: t });
-                    return `User '${user}' dropped at '${console.getTimestamp()}'`;
+                    return [200, true, `User '${user}' dropped at '${console.getTimestamp()}'`];
 
                 default: throw new Error('Invalid action');
             }

@@ -15,7 +15,7 @@ app.use(express.json()); // Middleware to parse JSON in request body
 
 let server; // Declare server variable
 
-async function serverStart() {
+async function serverRun() {
 	try {
 		console.log(`${serverName} started`); // Notify that the server has been started
 		server = app.listen(serverPort, () => { console.log(`Now listening on port ${serverPort}`); }); // Bind the server to the specified port
@@ -59,15 +59,19 @@ async function serverStart() {
 				const isAdmin = !!util.getUserListAdmin().includes(userHeader); // Create a bool if the current user is an admin
 				const { user, pass, admin, table, data } = req.body; // Deconstruct request body
 				const path = req.path;
+
+				let statusCode = 200;
+				let statusSuccess = true;
+				let response;
 				
 				if (!util.authCheck(userHeader, passHeader)) { handleResponse(req, res, "POST", 401, false, 'Unauthorized'); return; } // Validate the provided credentials
-				else if (path.startsWith("/cmd") && isAdmin) { result = await urlCmd( data ); } // CMD Handling
-				else if (path.startsWith("/query") && isAdmin) { result = await db.rawQuery( data ); } // Raw SQL Queries
-				else if (path.startsWith("/user/") && isAdmin) { result = await db.handleUser(path.slice("/user/".length), user, pass, admin, userHeader); } // User Management
+				else if (path === "/cmd" && isAdmin) { response = await urlCmd( data ); } // CMD Handling
+				else if (path === "/query" && isAdmin) { [statusCode, statusSuccess, response] = await db.rawQuery( data ); } // Raw SQL Queries
+				else if (path === "/user/" && isAdmin) { [statusCode, statusSuccess, response] = await db.handleUser(path.slice("/user/".length), user, pass, admin, userHeader); } // User Management
 				else if (path.length > 1) { result = await db.handleTable(path, table, data); } // Table & Data Management
 				else { handleResponse(req, res, "POST", 404, false, 'Not Found'); return; }
 				
-				handleResponse(req, res, "POST", 200, true, result);
+				handleResponse(req, res, "POST", statusCode, statusSuccess, result);
 			} catch (error) { handleResponse(req, res, "POST", 400, false, error.message); }
 		});
 
@@ -117,6 +121,6 @@ function serverShutdown() { // Graceful shutdown function, forces shutdown if ex
 }
 function serverRestart() {
     server.close(() => { console.log(`${serverName} restarting`); }); // Exit the process
-	serverStart();
+	serverRun();
 }
-serverStart(); // Start the async server function
+serverRun(); // Start the async server function

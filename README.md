@@ -53,7 +53,7 @@ docker build -t gatekeeper_image .
 
 Start command:
 ```sh
-docker run -d -it --name GateKeeper -p 80:8080 gatekeeper_image start
+docker run -d -it --name GateKeeper -p 80:8080 -v "/host/dir/to/config.ini":"/app/config.ini" gatekeeper_image start
 ```
 
 Container commands:

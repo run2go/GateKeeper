@@ -67,7 +67,7 @@ async function serverRun() {
 				if (!util.authCheck(userHeader, passHeader)) { handleResponse(req, res, "POST", 401, false, 'Unauthorized'); return; } // Validate the provided credentials
 				else if (path === "/cmd" && isAdmin) { response = await urlCmd( data ); } // CMD Handling
 				else if (path === "/query" && isAdmin) { [statusCode, statusSuccess, response] = await db.rawQuery( data ); } // Raw SQL Queries
-				else if (path === "/user/" && isAdmin) { [statusCode, statusSuccess, response] = await db.handleUser(path.slice("/user/".length), user, pass, admin, userHeader); } // User Management
+				else if (path.startsWith("/user/") && isAdmin) { [statusCode, statusSuccess, response] = await db.handleUser(path.slice("/user/".length), user, pass, admin, userHeader); } // User Management
 				else if (path.length > 1) { result = await db.handleTable(path, table, data); } // Table & Data Management
 				else { handleResponse(req, res, "POST", 404, false, 'Not Found'); return; }
 				

@@ -38,7 +38,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: v$(date +%s)
+        tag_name: release
         release_name: Release $(date +%Y-%m-%d)
         body: |
           GateKeeper Container Image

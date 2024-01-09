@@ -28,8 +28,8 @@ jobs:
         docker buildx inspect
         docker buildx build \
           --file Dockerfile \
-          --tag my-image-name:latest \
-          --tag my-image-name:$(date +%s) \
+          --tag gatekeeper_image:latest \
+          --tag gatekeeper_image:$(date +%s) \
           .
 
     - name: Create GitHub Release
@@ -39,7 +39,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: release
-        release_name: Release $(date +%Y-%m-%d)
+        release_name: Release Release-${{ github.event.workflow_run.created }}
         body: |
           GateKeeper Container Image
 

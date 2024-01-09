@@ -63,6 +63,31 @@ docker exec -it GateKeeper stop
 docker exec -it GateKeeper restart
 ```
 
+##Fail2Ban Example
+
+Filter:
+```sh
+# /etc/fail2ban/filter.d/gatekeeper.conf
+
+[Definition]
+failregex = \[\S+ \S+\] \[IP\] "<HOST>" \[TYPE\] "\S+" \[AUTH\] "\S+" \[USER-AGENT\] "\S+" \[CONTENT-TYPE\] "\S+" \[STATUS\] "((?!200)\d{3})"
+
+ignoreregex =
+```
+
+Jail:
+```sh
+# /etc/fail2ban/jail.d/gatekeeper.conf
+
+[gatekeeper]
+enabled = true
+filter = gatekeeper
+logpath = /path/to/gatekeeper/logfile
+maxretry = 3
+bantime = 3600
+findtime = 600
+
+```
 
 ## License
 

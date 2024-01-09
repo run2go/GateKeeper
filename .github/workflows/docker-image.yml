@@ -40,8 +40,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref_name }}
       with:
-        tag_name: release
-        release_name: Release-${{ github.event.workflow_run.created }}
+        tag_name: release-$(date +%s)
+        release_name: Release-"$tag"
         run: |
           gh release create "$tag" \
               --repo="$GITHUB_REPOSITORY" \

@@ -41,7 +41,7 @@ jobs:
         tag: ${{ github.ref_name }}
       with:
         tag_name: release-$(date +%s)
-        release_name: Release-"$tag"
+        release_name: Release-$(git rev-parse --short HEAD)
         run: |
           gh release create "$tag" \
               --repo="$GITHUB_REPOSITORY" \

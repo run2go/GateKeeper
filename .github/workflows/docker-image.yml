@@ -30,7 +30,7 @@ jobs:
       id: create_release
       uses: actions/create-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.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 }}
+        GITHUB_TOKEN: ${{ secrets.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 }}
       with:
         tag_name: v$(date +%s)
         release_name: Release $(date +%Y-%m-%d)

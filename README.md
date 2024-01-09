@@ -63,7 +63,7 @@ docker exec -it GateKeeper stop
 docker exec -it GateKeeper restart
 ```
 
-##Fail2Ban Example
+## Fail2Ban Example
 
 Filter:
 ```sh

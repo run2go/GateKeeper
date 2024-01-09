@@ -5,7 +5,13 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
+    
+permissions:
+  contents: write
+  pull-requests: write 
+  issues: read
+  packages: write
+  
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,3 +32,19 @@ jobs:
           --tag my-image-name:$(date +%s) \
           .
 
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v$(date +%s)
+        release_name: Release $(date +%Y-%m-%d)
+        body: |
+          GateKeeper Container Image
+
+    - name: Upload Docker image as a release asset
+      uses: actions/upload-artifact@v2
+      with:
+        name: gatekeeper_image
+        path: Dockerfile

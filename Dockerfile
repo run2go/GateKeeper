@@ -11,5 +11,8 @@ RUN npm install
 # Bundle app source
 COPY . /usr/src/app
 
+# Run tests during the image build process
+RUN npm test
+
 EXPOSE 80
 CMD ["node", "server.js"]

@@ -61,10 +61,8 @@ Access console:
 docker attach gatekeeper
 ```
 
-Detach key sequence: 
-```sh
-CTRL+P + CTLR+Q
-```
+Detach key sequence:
+`CTRL+P + CTLR+Q `
 
 ## Fail2Ban Example
 

@@ -92,7 +92,7 @@ async function serverRun() {
 		process.stdin.resume();
 		process.stdin.setEncoding('utf8');
 		process.stdin.on('data', function (text) { // Allow console commands
-			console.warn(`[CMD] ${text}`);
+			console.debug(`[CMD] ${text}`);
 			switch(text.trim()) {
 				case 'stop': serverShutdown(); break;
 				case 'print': console.log(util.printLists()); break;

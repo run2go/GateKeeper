@@ -1,5 +1,5 @@
 # GateKeeper
-## _REST-API Bun/Node.js Application_
+## _REST-API Node.js Application_
 #### Access your database via a Restful API without exposing it to the internet.
 
 This repository is developed to run in a docker container, but feel free to use the JS application right away.
@@ -39,7 +39,7 @@ Data Management
 
 GateKeeper makes use of the following tools & software:
 
-- [Bun] / [Node.js] (JavaScript Runtime Environment)
+- [Node.js] (JavaScript Runtime Environment)
 - [Express.js] (Node Framework)
 - [Sequelize] (ORM, Object-Relational Mapping)
 
@@ -53,14 +53,17 @@ docker build -t gatekeeper_image .
 
 Start command:
 ```sh
-docker run -d -it --name GateKeeper -p 80:8080 -v "/host/dir/to/config.ini":"/app/config.ini" gatekeeper_image start
+docker run -d -it --name gatekeeper -p 80:8080 -v "/host/dir/to/config.ini":"/app/config.ini" gatekeeper_image
 ```
 
-Container commands:
+Access console:
 ```sh
-docker exec -it GateKeeper start
-docker exec -it GateKeeper stop
-docker exec -it GateKeeper restart
+docker attach gatekeeper
+```
+
+Detach key sequence: 
+```sh
+CTRL+P + CTLR+Q
 ```
 
 ## Fail2Ban Example
@@ -71,7 +74,6 @@ Filter:
 
 [Definition]
 failregex = \[\S+ \S+\] \[IP\] "<HOST>" \[TYPE\] "\S+" \[AUTH\] "\S+" \[USER-AGENT\] "\S+" \[CONTENT-TYPE\] "\S+" \[STATUS\] "((?!200)\d{3})"
-
 ignoreregex =
 ```
 
@@ -86,7 +88,6 @@ logpath = /path/to/gatekeeper/logfile
 maxretry = 3
 bantime = 3600
 findtime = 600
-
 ```
 
 ## License
@@ -95,7 +96,6 @@ MIT
 
 
 [//]: #
-   [bun]: <https://bun.sh>
    [node.js]: <http://nodejs.org>
    [express.js]: <http://expressjs.com>
    [sequelize]: <http://sequelize.org>

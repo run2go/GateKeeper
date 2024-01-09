@@ -1,0 +1,44 @@
+name: Build and Publish Docker Image
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Build the Docker image
+      run: |
+        docker buildx create --use
+        docker buildx inspect
+        docker buildx build \
+          --file Dockerfile \
+          --tag my-image-name:latest \
+          --tag my-image-name:$(date +%s) \
+          .
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v$(date +%s)
+        release_name: Release $(date +%Y-%m-%d)
+        body: |
+          GateKeeper Version  v$(date +%s) - Container Image
+
+    - name: Upload Docker image as a release asset
+      uses: actions/upload-artifact@v2
+      with:
+        name: gatekeeper_image
+        path: Dockerfile

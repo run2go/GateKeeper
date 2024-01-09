@@ -38,10 +38,10 @@ jobs:
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ github.ref_name }}
+        tag: ${{ github.REF_NAME }}
       with:
-        tag_name: release-$(date +%s)
-        release_name: Release-"$tag"
+        tag_name: release
+        release_name: ${{ github.GITHUB_RUN_ID }}
         run: |
           gh release create "$tag" \
               --repo="$GITHUB_REPOSITORY" \

@@ -32,16 +32,22 @@ jobs:
           --tag gatekeeper_image:$(date +%s) \
           .
 
+
     - name: Create GitHub Release
       id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref_name }}
       with:
         tag_name: release
-        release_name: Release Release-${{ github.event.workflow_run.created }}
-        body: |
-          GateKeeper Container Image
+        release_name: Release-${{ github.event.workflow_run.created }}
+        run: |
+          gh release create "$tag" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
+              --generate-notes
+
 
     - name: Upload Docker image as a release asset
       uses: actions/upload-artifact@v2

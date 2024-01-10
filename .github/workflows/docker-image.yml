@@ -34,10 +34,10 @@ jobs:
           --tag gatekeeper_image:latest \
           --tag gatekeeper_image:$(date +%s) \
           .
-        
+    
         # Save the built image as a tarball
-        docker save -o gatekeeper_image gatekeeper_image.tar
-
+        docker save -o gatekeeper_image.tar gatekeeper_image:$(date +%s)
+  
         # Compress the tarball
         gzip gatekeeper_image.tar
 

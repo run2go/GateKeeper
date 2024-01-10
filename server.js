@@ -69,7 +69,7 @@ async function serverRun() {
 				else if (path.startsWith("/query") && isAdmin) { [statusCode, statusSuccess, response] = await db.rawQuery( data ); } // Raw SQL Queries
 				else if (path.startsWith("/user/") && isAdmin) { [statusCode, statusSuccess, response] = await db.handleUser(path.slice("/user/".length), user, pass, admin, userHeader); } // User Management
 				else if (path.length > 1) { result = await db.handleTable(path, table, data); } // Table & Data Management
-				else { handleResponse(req, res, "POST", 404, false, 'Not Found'); return; }
+				else { handleResponse(req, res, "POST", 404, false, 'Not Found'); return; } // Dismiss out-of-the-order requests
 				
 				handleResponse(req, res, "POST", statusCode, statusSuccess, result);
 			} catch (error) { handleResponse(req, res, "POST", 400, false, error.message); }

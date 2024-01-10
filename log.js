@@ -62,7 +62,6 @@ function debug(...args) {
 
 module.exports = {
 	getTimestamp,
-
 	log,
 	warn,
 	error,

@@ -45,7 +45,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: gatekeeper_image
-        #path: gatekeeper_image.tar.gz
+        path: gatekeeper_image #.tar.gz
 
   release:
     needs: build

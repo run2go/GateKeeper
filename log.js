@@ -4,10 +4,15 @@
 require('dotenv').config({ path: 'config.ini' });
 const logFilePath = process.env.LOGFILE_PATH;
 const loggingEnabled = (process.env.LOGGING_ENABLED === "true");
-const debugEnabled = (process.env.DEBUG_ENABLED === "true");
+let debugEnabled = (process.env.DEBUG_ENABLED === "true");
 
 // Use the file system library to write to the logfile
 const fs = require('fs');
+
+// Toggle Debug mode, return bool
+function toggleDebug() {
+	return !!(debugEnabled = !debugEnabled);
+}
 
 // Get the current date and format it into "year-month-day hour:minute:second"
 function getTimestamp() {
@@ -61,6 +66,7 @@ function debug(...args) {
 }
 
 module.exports = {
+	toggleDebug,
 	getTimestamp,
 	log,
 	warn,

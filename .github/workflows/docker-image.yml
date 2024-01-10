@@ -36,7 +36,7 @@ jobs:
           .
         
         # Save the built image as a tarball
-        docker save -o gatekeeper_image.tar gatekeeper_image
+        docker save -o gatekeeper_image gatekeeper_image.tar
 
         # Compress the tarball
         gzip gatekeeper_image.tar

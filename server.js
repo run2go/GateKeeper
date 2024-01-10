@@ -92,11 +92,10 @@ async function serverRun() {
 		process.stdin.resume();
 		process.stdin.setEncoding('utf8');
 		process.stdin.on('data', function (text) { // Allow console commands
-			console.debug(`[CMD] ${text}`);
 			switch(text.trim()) {
 				case 'stop': serverShutdown(); break;
 				case 'print': console.log(util.printLists()); break;
-				case 'debug': console.log(`Debug Mode ${console.toggleDebug()}`); break;
+				case 'debug': console.log(`Debug Status: ${console.toggleDebug()}`); break;
 				case 'reload': util.updateAll(); console.log(`${serverName} reloaded`); break;
 				case 'restart': serverRestart(); break;
 				case 'help': console.log(helpURL); break;

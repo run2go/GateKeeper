@@ -65,7 +65,7 @@ Detach key sequence:
 `CTRL+P + CTLR+Q `
 
 
-## Fail2Ban Example
+## fail2ban Example
 
 Filter:
 ```sh

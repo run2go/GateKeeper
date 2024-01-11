@@ -34,18 +34,12 @@ jobs:
           --tag gatekeeper_image:latest \
           --tag gatekeeper_image:$(date +%s) \
           .
-    
-        # Save the built image as a tarball
-        #docker save -o gatekeeper_image.tar gatekeeper_image:$(date +%s)
-  
-        # Compress the tarball
-        #gzip gatekeeper_image.tar
 
     - name: Upload Docker image as a release asset
       uses: actions/upload-artifact@v2
       with:
         name: gatekeeper_image
-        path: gatekeeper_image #.tar.gz
+        path: gatekeeper_image
 
   release:
     needs: build
@@ -59,6 +53,5 @@ jobs:
         run: |
           gh release create "$tag" \
               --repo="$GITHUB_REPOSITORY" \
-              --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
+              --title="${GITHUB_REPOSITORY#*/} v${tag#v}" \
         #--generate-notes \
-        #gatekeeper_image.tar.gz

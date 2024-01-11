@@ -7,6 +7,14 @@ const serverURL = process.env.SERVER_URL;
 const redirectURL = process.env.REDIRECT_URL;
 const helpURL = process.env.HELP_URL;
 
+const helpText = `Visit ${helpURL} for more information
+RELOAD    Reload cached lists & DB data.
+RESTART   Restart the server instance.
+STOP      Shutdown the server instance.
+PRINT     Print the currently cached lists.
+DEBUG     Toggle verbose mode used for debugging.
+HELP      Print this message.`;
+
 const console = require('./log.js'); // Use the logging functionality inside the log.js file
 const express = require('express'); // Make use of the express.js framework for the core application
 
@@ -93,12 +101,12 @@ async function serverRun() {
 		process.stdin.setEncoding('utf8');
 		process.stdin.on('data', function (text) { // Allow console commands
 			switch(text.trim()) {
+				case 'reload': util.updateAll(); console.log(`${serverName} reloaded`); break;
+				case 'restart': serverRestart(); break;
 				case 'stop': serverShutdown(); break;
 				case 'print': console.log(util.printLists()); break;
 				case 'debug': console.log(`Debug Status: ${console.toggleDebug()}`); break;
-				case 'reload': util.updateAll(); console.log(`${serverName} reloaded`); break;
-				case 'restart': serverRestart(); break;
-				case 'help': console.log(helpURL); break;
+				case 'help': console.log(helpText); break;
 				default: console.log(`Unknown command`);
 			}
 		});

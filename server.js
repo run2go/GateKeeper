@@ -24,7 +24,7 @@ app.use(express.json()); // Middleware to parse JSON in request body
 let server; // Declare server variable
 
 async function serverRun() {
-	try {
+	try {		
 		console.log(`${serverName} started`); // Notify that the server has been started
 		server = app.listen(serverPort, () => { console.log(`Now listening on port ${serverPort}`); }); // Bind the server to the specified port
 		
@@ -77,7 +77,7 @@ async function serverRun() {
 				else if (path.startsWith("/query") && isAdmin) { [statusCode, statusSuccess, response] = await db.rawQuery( data ); } // Raw SQL Queries
 				else if (path.startsWith("/user/") && isAdmin) { [statusCode, statusSuccess, response] = await db.handleUser(path.slice("/user/".length), user, pass, admin, userHeader); } // User Management
 				else if (path.length > 1) { result = await db.handleTable(path, table, data); } // Table & Data Management
-				else { handleResponse(req, res, "POST", 404, false, 'Not Found'); return; } // Dismiss out-of-the-order requests
+				else { handleResponse(req, res, "POST", 404, false, `Not Found`); return; } // Dismiss out-of-the-order requests
 				
 				handleResponse(req, res, "POST", statusCode, statusSuccess, result);
 			} catch (error) { handleResponse(req, res, "POST", 400, false, error.message); }
@@ -92,7 +92,7 @@ async function serverRun() {
 				case "reload": util.updateAll(); result = `${serverName} reloaded`; break;
 				case "restart": result = `${serverName} restarted`; serverRestart(); break;
 				case "stop": result = `${serverName} stopped`; setTimeout(() => { serverShutdown(); }, 10); break;
-				default: throw new Error('Invalid command');
+				default: throw new Error(`Invalid command`);
 			}
 			return result;
 		}
@@ -117,18 +117,17 @@ process.on('SIGTERM', serverTerminate); // Handle shutdown signals
 process.on('SIGQUIT', serverShutdown);
 process.on('SIGINT', serverShutdown);
 
-function serverTerminate() {
-	console.error(`${serverName} terminated`);
-	process.exit(12);
+function serverRestart() {
+	server.close(() => { console.log(`${serverName} restarted`); }); // Close the server, trigger restart
 }
-
 function serverShutdown() { // Graceful shutdown function, forces shutdown if exit process fails
 	console.log(`${serverName} stopped`);
     server.close(() => { process.exit(0); });
     setTimeout(() => { serverTerminate(); }, 2000); // Force shutdown if server hasn't stopped within 2s
 }
-function serverRestart() {
-    server.close(() => { console.log(`${serverName} restarting`); }); // Exit the process
-	serverRun();
+function serverTerminate() {
+	console.error(`${serverName} terminated`);
+	process.exit(12);
 }
+
 serverRun(); // Start the async server function

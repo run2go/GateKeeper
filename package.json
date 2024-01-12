@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "jest --detectOpenHandles"
+    "test": "jest --detectOpenHandles --bail"
   },
   "jest": {
     "testTimeout": 1000
@@ -25,11 +25,11 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "mysql2": "^3.6.5",
-    "sequelize": "^6.35.1"
+    "sequelize": "^6.35.1",
+    "sqlite3": "^5.1.6"
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "sqlite3": "^5.1.6",
     "supertest": "^6.3.3"
   }
 }

@@ -9,7 +9,7 @@ on:
 # Define environment variables for the workflow.
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: gatekeeper
 
 jobs:
   build-and-push-image:

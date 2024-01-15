@@ -34,11 +34,11 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           docker buildx build \
             --file Dockerfile \
-            --tag ghcr.io/${{ env.IMAGE_NAME }}:latest \
+            --tag ${{ env.IMAGE_NAME }}:latest \
             --label "org.opencontainers.image.source=${{ env.IMAGE_NAME }}" \
             --label "org.opencontainers.image.description=GateKeeper" \
             --label "org.opencontainers.image.licenses=MIT" \
             .
-          docker push ghcr.io/${{ env.IMAGE_NAME }}:latest
+          docker push ghcr.io/run2go/${{ env.IMAGE_NAME }}:latest
         env:
           DOCKER_BUILDKIT: 1

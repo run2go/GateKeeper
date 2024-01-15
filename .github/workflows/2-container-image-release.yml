@@ -16,7 +16,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Build & Release Docker image
+    name: Build Container image
     steps:
     - uses: actions/checkout@v3
 
@@ -51,5 +51,4 @@ jobs:
         run: |
           gh release create "$tag" \
               --repo="$GITHUB_REPOSITORY" \
-              --title="${GITHUB_REPOSITORY#*/} v${tag#v}" \
-        #--generate-notes \
+              --title="${GITHUB_REPOSITORY#*/} v${tag#v}"

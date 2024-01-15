@@ -41,4 +41,4 @@ jobs:
             --label "org.opencontainers.image.description=GateKeeper" \
             --label "org.opencontainers.image.licenses=MIT" \
             .
-          docker push localhost/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.IMAGE_NAME }}:latest

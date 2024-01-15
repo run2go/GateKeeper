@@ -1,31 +1,36 @@
 name: 1) Node.js Testsuite [Continuous Integration]
 
+# Configures this workflow to run every time a change is pushed to 'development'.
 on:
   push:
-    branches:
-      - development
+    branches: [development]
+  # Allow manual execution of this workflow
+  workflow_dispatch:
       
 jobs:
+  # Define build job using latest ubuntu version (lts) with node version 18.
   build:
-
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
-        node-version: [14.x, 16.x, 18.x]
+        node-version: [18.x]
 
     steps:
-    - name: Checkout repository
+    # Perform checkout of the repository
+    - name: a) Checkout repository
       uses: actions/checkout@v3
 
-    - name: Use Node.js ${{ matrix.node-version }}
+    # Set up and cache node.js environment
+    - name: b) Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v3
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
 
-    - name: Install dependencies
-      run: npm install
+    # Perform a clean install of the dependencies specified in package.json
+    - name: c) Install dependencies
+      run: npm ci
 
-    - name: Run tests with jest & supertest
+    # Run the *.test.js scripts inside /tests using npm
+    - name: d) Run tests with jest & supertest
       run: npm test

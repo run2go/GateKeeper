@@ -43,26 +43,32 @@ GateKeeper makes use of the following tools & software:
 - [Express.js] (Node Framework)
 - [Sequelize] (ORM, Object-Relational Mapping)
 
-
-## Installation
-
-Build command:
+## Usage
+Pull command:
 ```sh
-docker build -t gatekeeper_image .
+docker pull ghcr.io/run2go/gatekeeper:latest
+```
+
+Alternative, build the image yourself:
+```sh
+docker build -t gatekeeper .
 ```
 
 Start command:
 ```sh
-docker run -d -it --name gatekeeper -p 80:8080 -v "/host/dir/to/config.ini":"/app/config.ini" gatekeeper_image
+docker run -d -it --name gk -p 80:8080 -v "/host/dir/to/config.ini":"/app/config.ini" gatekeeper
 ```
 
 Access console:
 ```sh
-docker attach gatekeeper
+docker attach gk
 ```
 
 Detach key sequence:
 `CTRL+P + CTLR+Q `
+
+
+Enter "`help`" into the console to get an overview of the available CLI commands.
 
 
 ## fail2ban Example

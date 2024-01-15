@@ -1,14 +1,13 @@
 name: 1) Node.js Testsuite [Continuous Integration]
 
-# Configures this workflow to run every time a change is pushed to 'development'.
 on:
+  # Run every time a change is pushed to 'development'.
   push:
     branches: [development]
-  # Allow manual execution of this workflow
-  workflow_dispatch:
+  workflow_dispatch: # Allow manual execution of this workflow
       
 jobs:
-  # Define build job using latest ubuntu version (lts) with node version 18.
+  # Define build job to use latest ubuntu version (lts) with node version 18.
   build:
     runs-on: ubuntu-latest
     strategy:

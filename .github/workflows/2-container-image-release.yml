@@ -1,4 +1,4 @@
-name: Docker Image CI/CD
+name: 2) Container Image Release [Continuous Delivery]
 
 on:
   push:
@@ -16,14 +16,14 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Build & Upload Docker image
+    name: Build & Release Docker image
     steps:
     - uses: actions/checkout@v3
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
 
-    - name: Build Docker image
+    - name: Build Container image
       run: |
         docker buildx create --use
         docker buildx inspect
@@ -33,7 +33,7 @@ jobs:
           --tag gatekeeper_image:$(date +%s) \
           .
 
-    - name: Upload Docker image as a release asset
+    - name: Upload Container image as a release asset
       uses: actions/upload-artifact@v2
       with:
         name: gatekeeper_image
@@ -41,7 +41,7 @@ jobs:
 
   release:
     needs: build
-    name: Release Docker image
+    name: Release Container image
     runs-on: ubuntu-latest
     steps:
       - name: Create release

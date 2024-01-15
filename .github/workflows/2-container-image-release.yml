@@ -1,28 +1,32 @@
 name: 2) Container Image Release [Continuous Delivery]
+
 on:
+  # Run every time a pull request in 'main' is closed.
   pull_request:
-    types:
-      - closed
-    branches:
-      - main
-    
-permissions:
-  contents: write
-  pull-requests: read 
-  issues: read
-  packages: read
+    types: closed
+    branches: [main]
+  workflow_dispatch: # Allow manual execution of this workflow
   
 jobs:
+  # Define build job to use latest ubuntu version (lts) with node version 18.
   build:
     runs-on: ubuntu-latest
     name: Build Container image
+    # Allow repository contents to be altered
+    permissions:
+      contents: write
+      
     steps:
-    - uses: actions/checkout@v3
+    # Perform checkout of the repository
+    - name: a) Checkout repository
+      uses: actions/checkout@v3
 
-    - name: Set up Docker Buildx
+    # Set up docker buildx to build the image
+    - name: b) Set up Buildx action [Build]
       uses: docker/setup-buildx-action@v1
 
-    - name: Build Container image
+    # Build the image using buildx
+    - name: c) Build Container image [Build]
       run: |
         docker buildx create --use
         docker buildx inspect
@@ -32,7 +36,8 @@ jobs:
           --tag gatekeeper_image:$(date +%s) \
           .
 
-    - name: Upload Container image as a release asset
+    # Attach the created image to the release assets
+    - name: d) Upload Container image as a release asset [Build]
       uses: actions/upload-artifact@v2
       with:
         name: gatekeeper_image
@@ -42,8 +47,12 @@ jobs:
     needs: build
     name: Release Container image
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
     steps:
-      - name: Create release
+      # Use GH CLI to release the current build
+      - name: e) Create release [Release]
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           tag: v${{ github.run_id }}

@@ -1,4 +1,4 @@
-name: Node.js CI
+name: 1) Node.js Testsuite [Continuous Integration]
 
 on:
   push:
@@ -27,5 +27,5 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Run tests with Jest
+    - name: Run tests with jest & supertest
       run: npm test

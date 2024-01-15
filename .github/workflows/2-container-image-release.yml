@@ -1,9 +1,8 @@
 name: 2) Container Image Release [Continuous Delivery]
 
 on:
-  # Run every time a pull request in 'main' is closed.
-  pull_request:
-    types: closed
+  # Run every time a change is pushed to 'main'.
+  push:
     branches: [main]
   workflow_dispatch: # Allow manual execution of this workflow
   
@@ -18,15 +17,15 @@ jobs:
       
     steps:
     # Perform checkout of the repository
-    - name: a) Checkout repository
+    - name: Checkout repository
       uses: actions/checkout@v3
 
     # Set up docker buildx to build the image
-    - name: b) Set up Buildx action [Build]
+    - name: Set up Buildx action
       uses: docker/setup-buildx-action@v1
 
     # Build the image using buildx
-    - name: c) Build Container image [Build]
+    - name: Build Container image
       run: |
         docker buildx create --use
         docker buildx inspect
@@ -37,7 +36,7 @@ jobs:
           .
 
     # Attach the created image to the release assets
-    - name: d) Upload Container image as a release asset [Build]
+    - name: Upload Container image as a release asset
       uses: actions/upload-artifact@v2
       with:
         name: gatekeeper_image
@@ -52,7 +51,7 @@ jobs:
       
     steps:
       # Use GH CLI to release the current build
-      - name: e) Create release [Release]
+      - name: Create and publish release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           tag: v${{ github.run_id }}

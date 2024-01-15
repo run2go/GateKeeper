@@ -41,4 +41,4 @@ jobs:
             --label "org.opencontainers.image.description=GateKeeper" \
             --label "org.opencontainers.image.licenses=MIT" \
             .
-          docker push ${{ env.IMAGE_NAME }}:latest
+          docker image push ghcr.io/run2go/${{ env.IMAGE_NAME }}:latest

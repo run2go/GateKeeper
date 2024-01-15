@@ -23,44 +23,22 @@ jobs:
       # Perform checkout of the repository
       - name: Checkout repository
         uses: actions/checkout@v4
-        
-      # Authorize action to the GHCR
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          
-      # Extract meta info like tags, labels
-      - name: Extract metadata for container image
-        id: meta
-        uses: docker/metadata-action@v3
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-  
+
       # Set up docker buildx to build the image
       - name: Set up Buildx action
         uses: docker/setup-buildx-action@v1
-  
-      # Build the image using buildx
-      - name: Build Container image
+            
+      # Push the image to the registry
+      - name: Build and push container image to GHCR
         run: |
-          docker buildx create --use
-          docker buildx inspect
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           docker buildx build \
             --file Dockerfile \
-            --tag gatekeeper:latest \
+            --tag ghcr.io/${{ env.IMAGE_NAME }}:latest \
             --label "org.opencontainers.image.source=${{ env.IMAGE_NAME }}" \
             --label "org.opencontainers.image.description=GateKeeper" \
             --label "org.opencontainers.image.licenses=MIT" \
             .
-            
-      # Push the image to the registry
-      - name: Build and push container image
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          push: true
-          tags: latest  # Use only the "latest" tag
-          labels: ${{ steps.meta.outputs.labels }}
+          docker push ghcr.io/${{ env.IMAGE_NAME }}:latest
+        env:
+          DOCKER_BUILDKIT: 1

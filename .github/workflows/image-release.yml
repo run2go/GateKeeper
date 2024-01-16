@@ -1,0 +1,62 @@
+name: Container Image Release [Continuous Delivery]
+
+on:
+  # Run every time a change is pushed to 'main'.
+  pull_request:
+    types: closed
+    branches: [development]
+  workflow_dispatch: # Allow manual execution of this workflow
+  
+jobs:
+  # Define build job to use latest ubuntu version (lts) with node version 18.
+  build:
+    runs-on: ubuntu-latest
+    name: Build Container image
+    # Allow repository contents to be altered
+    permissions:
+      contents: write
+      
+    steps:
+    # Perform checkout of the repository
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # Set up docker buildx to build the image
+    - name: Set up Buildx action
+      uses: docker/setup-buildx-action@v1
+
+    # Build the image using buildx
+    - name: Build Container image
+      run: |
+        docker buildx create --use
+        docker buildx inspect
+        docker buildx build \
+          --file Dockerfile \
+          --tag gatekeeper_image:latest \
+          --tag gatekeeper_image:$(date +%s) \
+          .
+
+    # Attach the created image to the release assets
+    - name: Upload Container image as a release asset
+      uses: actions/upload-artifact@v2
+      with:
+        name: gatekeeper_image
+        path: gatekeeper_image
+
+  release:
+    needs: build
+    name: Release Container image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      # Use GH CLI to release the current build
+      - name: Create and publish release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: v${{ github.run_id }}
+        run: |
+          gh release create "$tag" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="${GITHUB_REPOSITORY#*/} v${tag#v}"

@@ -1,0 +1,47 @@
+name: Container Image Deployment [Continuous Deployment]
+
+on:
+  workflow_dispatch: # Allow manual execution of this workflow
+    
+# Define environment variables for the workflow.
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: gatekeeper
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
+    permissions:
+      contents: read
+      packages: write
+      
+    steps:
+      # Perform checkout of the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Set up docker buildx to build the image            
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Login to GitHub Container Registry
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io/run2go
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      # Build & push the image to the GHCR
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: |
+            ghcr.io/run2go/gatekeeper:latest
+          build-args: |
+            "x=y"
+            "foo=bar"
+          secrets: |
+            "secret-id=${{secrets.SECRET_VALUE}}"

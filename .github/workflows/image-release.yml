@@ -2,9 +2,8 @@ name: Container Image Release [Continuous Delivery]
 
 on:
   # Run every time a change is pushed to 'main'.
-  pull_request:
-    types: closed
-    branches: [development]
+  push:
+    branches: [main]
     paths:
       - '**/*.js'
       - '**/*.ini'

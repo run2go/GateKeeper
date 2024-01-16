@@ -4,6 +4,10 @@ on:
   # Run every time a change is pushed to 'development'.
   push:
     branches: [development]
+    paths:
+      - '**/*.js'
+      - '**/*.ini'
+      - '**/*.json'
   workflow_dispatch: # Allow manual execution of this workflow
       
 jobs:

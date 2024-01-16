@@ -2,7 +2,7 @@
 ## _REST-API Node.js Application_
 #### Access your database via a Restful API without exposing it to the internet.
 
-This repository is developed to run in a docker container, but feel free to use the JS application right away.
+This repository is developed to run in a docker container, but feel free to use the Node.js application right away.
 The REST-API is using the following tools & software:
 
 

@@ -2,15 +2,22 @@
 ## _REST-API Node.js Application_
 #### Access your database via a Restful API without exposing it to the internet.
 
-This repository is developed to run in a docker container, but feel free to use the Node.js application right away.
+This repository is designed to run in a docker container, but feel free to use the Node.js application right away.
 The REST-API is using the following tools & software:
+
+## Tech
+GateKeeper makes use of the following tools & software:
+
+- [Node.js] (JavaScript Runtime Environment)
+- [Express.js] (Node Framework)
+- [Sequelize] (ORM, Object-Relational Mapping)
 
 
 ## Features
 Security measures along with CRUD database access.
 
 
-User Management (Admins only)
+User Management (Admins only):
 
 | Function | Description |
 | ------ | ------ |
@@ -22,7 +29,7 @@ User Management (Admins only)
 | DROP | (Hard) Delete accounts |
 
 
-Data Management
+Data Management:
 
 | Function | Description |
 | ------ | ------ |
@@ -34,14 +41,6 @@ Data Management
 | RESTORE | Restore specified table rows or a full table |
 | DROP | (Hard) Delete table rows or drop a full table |
 
-
-## Tech
-
-GateKeeper makes use of the following tools & software:
-
-- [Node.js] (JavaScript Runtime Environment)
-- [Express.js] (Node Framework)
-- [Sequelize] (ORM, Object-Relational Mapping)
 
 ## Usage
 Pull command:

@@ -14,6 +14,7 @@ let userData, userList, userListActive, userListDeleted, userListAdmin, tableLis
 async function initAdmin() { if (userListAdmin.length === 0) { await db.handleUser("create", dbUsername, dbPassword, true); } } // Add db admin user if adminlist is empty
 async function updateAll() { await updateUserList(); await updateTableList(); updateTokenList(); } // Update all lists
 
+// Get the latest userData from the DB & store it in locally cached lists
 async function updateUserList() {
 	userData = await db.getUserData();
 	userList = userData.map((u) => u.username);
@@ -21,11 +22,15 @@ async function updateUserList() {
 	userListDeleted = userData.filter((u) => u.deleted !== null).map((u) => u.username);
 	userListAdmin = userData.filter((u) => u.admin === true).map((u) => u.username);
 }
+
+// Get & update tableData
 async function updateTableList() {
 	tableList = await db.getTableData();
 	tableListActive = tableList.filter(tableName => !tableName.startsWith('deleted_'));
 	tableListDeleted = tableList.filter(tableName => tableName.startsWith('deleted_'));
 }
+
+// if enabled, place contents of tokens.txt inside tokenList
 function updateTokenList() {
 	if (tokensEnabled) {
 		const fs = require('fs');

@@ -1,4 +1,4 @@
-name: 1) Node.js Testsuite [Continuous Integration]
+name: Node.js Testsuite [Continuous Integration]
 
 on:
   # Run every time a change is pushed to 'development'.

@@ -1,9 +1,9 @@
-name: 3) Container Image Deployment [Continuous Deployment]
+name: Container Image Deployment [Continuous Deployment]
 
 on:
   # Run every time a change is pushed to 'release'.
-  push:
-    branches: [release]
+  #push:
+  #  branches: [release]
   workflow_dispatch: # Allow manual execution of this workflow
     
 # Define environment variables for the workflow.

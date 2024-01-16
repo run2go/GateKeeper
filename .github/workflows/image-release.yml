@@ -5,6 +5,11 @@ on:
   pull_request:
     types: closed
     branches: [development]
+    paths:
+      - '**/*.js'
+      - '**/*.ini'
+      - '**/*.json'
+      - '**/Dockerfile'
   workflow_dispatch: # Allow manual execution of this workflow
   
 jobs:

@@ -1,9 +1,10 @@
-name: 2) Container Image Release [Continuous Delivery]
+name: Container Image Release [Continuous Delivery]
 
 on:
   # Run every time a change is pushed to 'main'.
-  push:
-    branches: [main]
+  pull_request:
+    types: closed
+    branches: [development]
   workflow_dispatch: # Allow manual execution of this workflow
   
 jobs:

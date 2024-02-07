@@ -12,7 +12,7 @@ RELOAD    Reload cached lists & DB data.
 RESTART   Restart the server instance.
 STOP      Shutdown the server instance.
 PRINT     Print the currently cached lists.
-DEBUG     Toggle verbose mode used for debugging.
+DEBUG     Toggle debug mode.
 HELP      Print this message.`;
 
 const console = require('./log.js'); // Use the logging functionality inside the log.js file
